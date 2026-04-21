@@ -200,8 +200,10 @@ export default async function PartnerDetailPage({
             const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1
             monthlyCalc = months > 0 ? Math.round(partner.subscription_budget / months) : null
           }
+          const campaignExtra = (campaigns ?? []).reduce((sum, c) => sum + (c.monthly_budget ?? 0), 0)
+          const totalMonthly = (monthlyCalc ?? 0) + campaignExtra
           return (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
               <div>
                 <p className="text-xs mb-1" style={{ color: 'var(--muted)' }}>Startdato</p>
                 <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>
@@ -221,10 +223,21 @@ export default async function PartnerDetailPage({
                 </p>
               </div>
               <div>
-                <p className="text-xs mb-1" style={{ color: 'var(--muted)' }}>Budget/md (beregnet)</p>
-                <p className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
+                <p className="text-xs mb-1" style={{ color: 'var(--muted)' }}>Abonnement/md</p>
+                <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>
                   {monthlyCalc ? `${monthlyCalc.toLocaleString('da-DK')} kr` : '—'}
                 </p>
+              </div>
+              <div>
+                <p className="text-xs mb-1" style={{ color: 'var(--muted)' }}>Samlet/md (ex. moms)</p>
+                <p className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
+                  {totalMonthly > 0 ? `${totalMonthly.toLocaleString('da-DK')} kr` : '—'}
+                </p>
+                {campaignExtra > 0 && (
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
+                    inkl. {campaignExtra.toLocaleString('da-DK')} kr kampagner
+                  </p>
+                )}
               </div>
             </div>
           )

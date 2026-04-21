@@ -82,7 +82,7 @@ export default async function PartnerDashboardPage({
     .order('start_date', { ascending: false })
 
   const activeCampaigns = (campaigns ?? []).filter(c => c.status === 'active')
-  const totalBudget = activeCampaigns.reduce((sum, c) => sum + (c.monthly_budget ?? 0), 0)
+  const campaignBudget = (campaigns ?? []).reduce((sum, c) => sum + (c.monthly_budget ?? 0), 0)
 
   const subStart = partner.subscription_start ? new Date(partner.subscription_start) : null
   const subEnd = partner.subscription_end ? new Date(partner.subscription_end) : null
@@ -91,6 +91,8 @@ export default async function PartnerDashboardPage({
     const months = (subEnd.getFullYear() - subStart.getFullYear()) * 12 + (subEnd.getMonth() - subStart.getMonth()) + 1
     subMonthly = months > 0 ? Math.round(partner.subscription_budget / months) : null
   }
+
+  const totalMonthly = (subMonthly ?? 0) + campaignBudget
 
   return (
     <div
@@ -132,10 +134,15 @@ export default async function PartnerDashboardPage({
             <p className="text-3xl font-bold" style={{ color: '#22c55e' }}>{activeCampaigns.length}</p>
           </div>
           <div className="rounded-xl p-5" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-            <p className="text-xs mb-1" style={{ color: 'var(--muted)' }}>Samlet budget/md</p>
+            <p className="text-xs mb-1" style={{ color: 'var(--muted)' }}>Samlet budget/md (ex. moms)</p>
             <p className="text-3xl font-bold" style={{ color: 'var(--accent)' }}>
-              {totalBudget > 0 ? `${totalBudget.toLocaleString('da-DK')} kr` : '—'}
+              {totalMonthly > 0 ? `${totalMonthly.toLocaleString('da-DK')} kr` : '—'}
             </p>
+            {subMonthly !== null && campaignBudget > 0 && (
+              <p className="text-xs mt-1.5" style={{ color: 'var(--muted)' }}>
+                Abonnement {subMonthly.toLocaleString('da-DK')} + kampagner {campaignBudget.toLocaleString('da-DK')} kr
+              </p>
+            )}
           </div>
         </div>
 
