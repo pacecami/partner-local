@@ -138,11 +138,11 @@ export default async function PartnerDashboardPage({
             <p className="text-3xl font-bold" style={{ color: 'var(--accent)' }}>
               {totalMonthly > 0 ? `${totalMonthly.toLocaleString('da-DK')} kr` : '—'}
             </p>
-            {subMonthly !== null && campaignBudget > 0 && (
-              <p className="text-xs mt-1.5" style={{ color: 'var(--muted)' }}>
-                Abonnement {subMonthly.toLocaleString('da-DK')} + kampagner {campaignBudget.toLocaleString('da-DK')} kr
+            {(campaigns ?? []).filter(c => c.monthly_budget).map(c => (
+              <p key={c.id} className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
+                inkl. {(c.monthly_budget as number).toLocaleString('da-DK')} kr i {(c.placements ?? []).join(', ') || c.name}
               </p>
-            )}
+            ))}
           </div>
         </div>
 

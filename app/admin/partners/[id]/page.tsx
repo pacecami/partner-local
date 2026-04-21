@@ -233,11 +233,11 @@ export default async function PartnerDetailPage({
                 <p className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
                   {totalMonthly > 0 ? `${totalMonthly.toLocaleString('da-DK')} kr` : '—'}
                 </p>
-                {campaignExtra > 0 && (
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
-                    inkl. {campaignExtra.toLocaleString('da-DK')} kr kampagner
+                {(campaigns ?? []).filter(c => c.monthly_budget).map(c => (
+                  <p key={c.id} className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
+                    inkl. {(c.monthly_budget as number).toLocaleString('da-DK')} kr i {(c.placements ?? []).join(', ') || c.name}
                   </p>
-                )}
+                ))}
               </div>
             </div>
           )
