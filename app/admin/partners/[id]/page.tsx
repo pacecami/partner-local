@@ -2,6 +2,7 @@ import React from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { fetchGA4Events, type GA4EventResult } from '@/lib/ga4'
+import { fetchPacenamiStats, type PacenamiStats } from '@/lib/pacenami'
 
 export const dynamic = 'force-dynamic'
 
@@ -82,6 +83,37 @@ export default async function PartnerDetailPage({
     .select('*')
     .eq('partner_id', partner.id)
     .order('start_date', { ascending: false })
+
+  // Pacenami banner-statistik
+  const bannerCampaigns = (campaigns ?? []).filter(c =>
+    c.pacenami_campaign_id && (c.placements ?? []).includes('Banner')
+  )
+  const pacenamiResults: Record<string, PacenamiStats | null> = {}
+  await Promise.all(
+    bannerCampaigns.map(async c => {
+      pacenamiResults[c.id] = await fetchPacenamiStats(
+        c.pacenami_campaign_id,
+        ga4Start,
+        ga4End,
+      ).catch(() => null)
+    })
+  )
+  const pacenamiTotal = Object.values(pacenamiResults).reduce<PacenamiStats | null>((acc, s) => {
+    if (!s) return acc
+    if (!acc) return { ...s }
+    return {
+      served:               acc.served + s.served,
+      impressions:          acc.impressions + s.impressions,
+      viewable_impressions: acc.viewable_impressions + s.viewable_impressions,
+      viewability:          acc.impressions + s.impressions > 0
+        ? ((acc.viewable_impressions + s.viewable_impressions) / (acc.impressions + s.impressions)) * 100
+        : 0,
+      clicks: acc.clicks + s.clicks,
+      ctr:    acc.impressions + s.impressions > 0
+        ? ((acc.clicks + s.clicks) / (acc.impressions + s.impressions)) * 100
+        : 0,
+    }
+  }, null)
 
   async function updatePartner(formData: FormData) {
     'use server'
@@ -578,6 +610,69 @@ export default async function PartnerDetailPage({
               </div>
             )
           })}
+        </section>
+      )}
+
+      {/* ── Banner statistik (Pacenami) ── */}
+      {pacenamiTotal && (
+        <section className="space-y-4">
+          <h2 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>
+            Banner statistik <span className="font-normal text-xs ml-1" style={{ color: 'var(--muted)' }}>(Pacenami — {monthLabel(selectedMonth)})</span>
+          </h2>
+
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+            {[
+              { label: 'Served',              value: pacenamiTotal.served.toLocaleString('da-DK'),               accent: false },
+              { label: 'Impressions',         value: pacenamiTotal.impressions.toLocaleString('da-DK'),          accent: true  },
+              { label: 'Viewable Impr.',      value: pacenamiTotal.viewable_impressions.toLocaleString('da-DK'), accent: false },
+              { label: 'Viewability',         value: `${pacenamiTotal.viewability.toFixed(2)}%`,                 accent: true  },
+              { label: 'Kliks',               value: pacenamiTotal.clicks.toLocaleString('da-DK'),              accent: false },
+              { label: 'CTR',                 value: `${pacenamiTotal.ctr.toFixed(2)}%`,                        accent: true  },
+            ].map(({ label, value, accent }) => (
+              <div
+                key={label}
+                className="rounded-xl p-4 flex flex-col gap-1"
+                style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+              >
+                <p className="text-xs uppercase tracking-wider" style={{ color: 'var(--muted)' }}>{label}</p>
+                <p className="text-2xl font-bold tabular-nums" style={{ color: accent ? 'var(--accent)' : 'var(--foreground)' }}>
+                  {value}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {bannerCampaigns.length > 1 && (
+            <div className="rounded-xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+              <div className="px-5 py-3 border-b text-xs font-semibold uppercase tracking-wider" style={{ borderColor: 'var(--border)', color: 'var(--muted)' }}>
+                Opdelt per kampagne
+              </div>
+              <table className="w-full">
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                    {['Kampagne', 'Impressions', 'Viewable', 'Viewability', 'Kliks', 'CTR'].map(h => (
+                      <th key={h} className="px-4 py-2 text-left text-xs font-medium" style={{ color: 'var(--muted)' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {bannerCampaigns.map((c, i) => {
+                    const s = pacenamiResults[c.id]
+                    return (
+                      <tr key={c.id} style={{ borderBottom: i < bannerCampaigns.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                        <td className="px-4 py-3 text-sm font-medium" style={{ color: 'var(--foreground)' }}>{c.name}</td>
+                        <td className="px-4 py-3 text-sm tabular-nums" style={{ color: 'var(--foreground)' }}>{s ? s.impressions.toLocaleString('da-DK') : '—'}</td>
+                        <td className="px-4 py-3 text-sm tabular-nums" style={{ color: 'var(--foreground)' }}>{s ? s.viewable_impressions.toLocaleString('da-DK') : '—'}</td>
+                        <td className="px-4 py-3 text-sm font-semibold tabular-nums" style={{ color: 'var(--accent)' }}>{s ? `${s.viewability.toFixed(2)}%` : '—'}</td>
+                        <td className="px-4 py-3 text-sm tabular-nums" style={{ color: 'var(--foreground)' }}>{s ? s.clicks.toLocaleString('da-DK') : '—'}</td>
+                        <td className="px-4 py-3 text-sm font-semibold tabular-nums" style={{ color: 'var(--accent)' }}>{s ? `${s.ctr.toFixed(2)}%` : '—'}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
       )}
 
