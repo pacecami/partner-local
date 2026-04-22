@@ -64,9 +64,9 @@ export default async function PartnerDashboardPage({
   if (!partner) redirect('/')
 
   const ga4Properties = [
-    { id: partner.ga4_property_id, events: partner.ga4_events_1, label: partner.ga4_label_1 },
-    { id: partner.ga4_property_id_2, events: partner.ga4_events_2, label: partner.ga4_label_2 },
-  ].filter(p => p.id) as { id: string; events: string | null; label: string | null }[]
+    { id: partner.ga4_property_id, events: partner.ga4_events_1, label: partner.ga4_label_1, aliases: partner.ga4_aliases_1 },
+    { id: partner.ga4_property_id_2, events: partner.ga4_events_2, label: partner.ga4_label_2, aliases: partner.ga4_aliases_2 },
+  ].filter(p => p.id) as { id: string; events: string | null; label: string | null; aliases: string | null }[]
 
   const ga4Results = await Promise.all(
     ga4Properties.map(({ id, events }) => {
@@ -301,8 +301,11 @@ export default async function PartnerDashboardPage({
               </div>
             </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              {ga4Properties.map(({ id, label }, i) => {
+              {ga4Properties.map(({ id, label, aliases, events: eventsStr }, i) => {
                 const events = ga4Results[i]
+                const aliasList = aliases ? aliases.split(',').map(a => a.trim()) : []
+                const eventList = (eventsStr ?? '').split(',').map(e => e.trim())
+                const aliasMap = Object.fromEntries(eventList.map((e, idx) => [e, aliasList[idx] || e]))
                 return (
                   <div
                     key={id}
@@ -320,8 +323,8 @@ export default async function PartnerDashboardPage({
                             className="flex items-center justify-between py-2 border-b last:border-0"
                             style={{ borderColor: 'var(--border)' }}
                           >
-                            <span className="text-xs font-mono" style={{ color: 'var(--muted)' }}>
-                              {eventName}
+                            <span className="text-sm" style={{ color: 'var(--foreground)' }}>
+                              {aliasMap[eventName] || eventName}
                             </span>
                             <span
                               className="text-sm font-bold tabular-nums"

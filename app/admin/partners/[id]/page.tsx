@@ -64,10 +64,10 @@ export default async function PartnerDetailPage({
   if (!partner) redirect('/admin')
 
   const ga4Properties = [
-    { id: partner.ga4_property_id, events: partner.ga4_events_1, label: partner.ga4_label_1 },
-    { id: partner.ga4_property_id_2, events: partner.ga4_events_2, label: partner.ga4_label_2 },
-    { id: partner.ga4_property_id_3, events: null, label: null },
-  ].filter(p => p.id) as { id: string; events: string | null; label: string | null }[]
+    { id: partner.ga4_property_id, events: partner.ga4_events_1, label: partner.ga4_label_1, aliases: partner.ga4_aliases_1 },
+    { id: partner.ga4_property_id_2, events: partner.ga4_events_2, label: partner.ga4_label_2, aliases: partner.ga4_aliases_2 },
+    { id: partner.ga4_property_id_3, events: null, label: null, aliases: null },
+  ].filter(p => p.id) as { id: string; events: string | null; label: string | null; aliases: string | null }[]
 
   const ga4Results = await Promise.all(
     ga4Properties.map(({ id, events }) => {
@@ -93,6 +93,8 @@ export default async function PartnerDetailPage({
     const events_2 = (formData.get('ga4_events_2') as string).trim()
     const label_1 = (formData.get('ga4_label_1') as string).trim()
     const label_2 = (formData.get('ga4_label_2') as string).trim()
+    const aliases_1 = (formData.get('ga4_aliases_1') as string).trim()
+    const aliases_2 = (formData.get('ga4_aliases_2') as string).trim()
     const subscription_start = (formData.get('subscription_start') as string) || null
     const subscription_end = (formData.get('subscription_end') as string) || null
     const subBudgetRaw = (formData.get('subscription_budget') as string).replace(/\./g, '').replace(/,/g, '.').trim()
@@ -108,6 +110,8 @@ export default async function PartnerDetailPage({
         ga4_events_2: events_2 || null,
         ga4_label_1: label_1 || null,
         ga4_label_2: label_2 || null,
+        ga4_aliases_1: aliases_1 || null,
+        ga4_aliases_2: aliases_2 || null,
         subscription_start,
         subscription_end,
         subscription_budget,
@@ -413,12 +417,20 @@ export default async function PartnerDetailPage({
               <input name="subscription_budget" type="text" inputMode="numeric" defaultValue={partner.subscription_budget ? partner.subscription_budget.toLocaleString('da-DK') : ''} placeholder="120.000" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
             </div>
             <div className="col-span-2">
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Events — Property 1 <span className="font-normal">(kommasepareret)</span></label>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Events — Property 1 <span className="font-normal">(kommasepareret, tekniske navne)</span></label>
               <input name="ga4_events_1" defaultValue={partner.ga4_events_1 ?? ''} placeholder="event_navn_1,event_navn_2" className="w-full px-3 py-2 rounded-lg text-sm outline-none font-mono" style={inputStyle} />
             </div>
             <div className="col-span-2">
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Events — Property 2 <span className="font-normal">(kommasepareret)</span></label>
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--muted)' }}>Visningsnavne — Property 1 <span className="font-normal">(hvad partneren ser, samme rækkefølge)</span></label>
+              <input name="ga4_aliases_1" defaultValue={partner.ga4_aliases_1 ?? ''} placeholder="App visninger,Nummerplade klik,App download" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Events — Property 2 <span className="font-normal">(kommasepareret, tekniske navne)</span></label>
               <input name="ga4_events_2" defaultValue={partner.ga4_events_2 ?? ''} placeholder="event_navn_1,event_navn_2" className="w-full px-3 py-2 rounded-lg text-sm outline-none font-mono" style={inputStyle} />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--muted)' }}>Visningsnavne — Property 2 <span className="font-normal">(hvad partneren ser, samme rækkefølge)</span></label>
+              <input name="ga4_aliases_2" defaultValue={partner.ga4_aliases_2 ?? ''} placeholder="App visninger,Nummerplade klik" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
             </div>
           </div>
           <div className="flex justify-end">
@@ -462,19 +474,36 @@ export default async function PartnerDetailPage({
               )}
             </div>
           </div>
-          {ga4Properties.map(({ id, label }, i) => {
+          {ga4Properties.map(({ id, label, aliases }, i) => {
             const events = ga4Results[i]
+            const aliasMap = aliases
+              ? Object.fromEntries(
+                  (ga4Properties[i].events ?? '').split(',').map((e, idx) => [
+                    e.trim(),
+                    aliases.split(',')[idx]?.trim() || e.trim(),
+                  ])
+                )
+              : {}
             return (
               <div key={id} className="rounded-xl p-5" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
                 <p className="text-xs mb-4 font-mono" style={{ color: 'var(--muted)' }}>{label ?? `Property ${i + 1}`}: {id}</p>
                 {events && events.length > 0 ? (
-                  <div className="space-y-2">
-                    {events.map(({ eventName, count }) => (
-                      <div key={eventName} className="flex items-center justify-between py-2 border-b last:border-0" style={{ borderColor: 'var(--border)' }}>
-                        <span className="text-xs font-mono" style={{ color: 'var(--muted)' }}>{eventName}</span>
-                        <span className="text-sm font-bold" style={{ color: 'var(--accent)' }}>{count.toLocaleString('da-DK')}</span>
-                      </div>
-                    ))}
+                  <div className="space-y-1">
+                    {events.map(({ eventName, count }) => {
+                      const displayName = aliasMap[eventName] || eventName
+                      const hasAlias = displayName !== eventName
+                      return (
+                        <div key={eventName} className="flex items-center justify-between py-2 border-b last:border-0" style={{ borderColor: 'var(--border)' }}>
+                          <div>
+                            {hasAlias && (
+                              <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>{displayName}</p>
+                            )}
+                            <p className="text-xs font-mono" style={{ color: 'var(--muted)' }}>{eventName}</p>
+                          </div>
+                          <span className="text-sm font-bold" style={{ color: 'var(--accent)' }}>{count.toLocaleString('da-DK')}</span>
+                        </div>
+                      )
+                    })}
                   </div>
                 ) : (
                   <p className="text-sm" style={{ color: 'var(--muted)' }}>
