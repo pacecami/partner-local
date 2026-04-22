@@ -50,6 +50,8 @@ export default async function EditCampaignPage({
     const emails_sent = emailsSentRaw ? parseInt(emailsSentRaw) : null
     const emails_opened = emailsOpenedRaw ? parseInt(emailsOpenedRaw) : null
     const clicks_to_advertiser = clicksToAdvertiserRaw ? parseInt(clicksToAdvertiserRaw) : null
+    const pacenamiRaw = (formData.get('pacenami_campaign_id') as string || '').trim()
+    const pacenami_campaign_id = pacenamiRaw || null
 
     const graphicFile = formData.get('graphic') as File | null
     let graphic_url = campaign.graphic_url
@@ -69,7 +71,7 @@ export default async function EditCampaignPage({
 
     await supabase
       .from('campaigns')
-      .update({ name, status, start_date, end_date, monthly_budget, placements, graphic_url, impressions, clicks, emails_sent, emails_opened, clicks_to_advertiser })
+      .update({ name, status, start_date, end_date, monthly_budget, placements, graphic_url, impressions, clicks, emails_sent, emails_opened, clicks_to_advertiser, pacenami_campaign_id })
       .eq('id', campaignId)
 
     redirect(`/admin/partners/${slug}`)
@@ -118,6 +120,19 @@ export default async function EditCampaignPage({
             <div>
               <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Slutdato</label>
               <input name="end_date" type="date" defaultValue={campaign.end_date ?? ''} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>
+                Pacenami Campaign ID <span className="font-normal">(til automatisk banner-statistik)</span>
+              </label>
+              <input
+                name="pacenami_campaign_id"
+                type="text"
+                defaultValue={campaign.pacenami_campaign_id ?? ''}
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                className="w-full px-3 py-2 rounded-lg text-sm outline-none font-mono"
+                style={inputStyle}
+              />
             </div>
             <div className="col-span-2">
               <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>

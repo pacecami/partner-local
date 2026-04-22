@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { fetchGA4Events } from '@/lib/ga4'
+import { fetchPacenamiStats, type PacenamiStats } from '@/lib/pacenami'
 import { renderToBuffer, Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
 import React from 'react'
 
@@ -239,6 +240,32 @@ export async function GET(
     })
   )
 
+  // Pacenami banner-statistik
+  const bannerCampaigns = (campaigns ?? []).filter((c: any) =>
+    c.pacenami_campaign_id && (c.placements ?? []).includes('Banner')
+  )
+  const pacenamiResults: Record<string, PacenamiStats | null> = {}
+  await Promise.all(
+    bannerCampaigns.map(async (c: any) => {
+      pacenamiResults[c.id] = await fetchPacenamiStats(c.pacenami_campaign_id, ga4Start, ga4End).catch(() => null)
+    })
+  )
+  const pacenamiTotal = Object.values(pacenamiResults).reduce<PacenamiStats | null>((acc, s) => {
+    if (!s) return acc
+    if (!acc) return { ...s }
+    const imp = acc.impressions + s.impressions
+    const vi  = acc.viewable_impressions + s.viewable_impressions
+    const cl  = acc.clicks + s.clicks
+    return {
+      served: acc.served + s.served,
+      impressions: imp,
+      viewable_impressions: vi,
+      viewability: imp > 0 ? (vi / imp) * 100 : 0,
+      clicks: cl,
+      ctr: imp > 0 ? (cl / imp) * 100 : 0,
+    }
+  }, null)
+
   // ─── PDF-dokument ──────────────────────────────────────────────────────────
   const pdf = await renderToBuffer(
     <Document
@@ -438,6 +465,38 @@ export async function GET(
                 </View>
               )
             })}
+          </>
+        )}
+
+        {/* ── Banner statistik (Pacenami) ── */}
+        {pacenamiTotal && (
+          <>
+            <Text style={s.sectionTitle}>Banner statistik</Text>
+            {/* Stat-grid: 3 kolonner × 2 rækker */}
+            <View style={{ flexDirection: 'row', gap: 6, marginBottom: 6 }}>
+              {[
+                { label: 'Served',              value: fmtNum(pacenamiTotal.served) },
+                { label: 'Impressions',         value: fmtNum(pacenamiTotal.impressions) },
+                { label: 'Viewable Impressions',value: fmtNum(pacenamiTotal.viewable_impressions) },
+              ].map(({ label, value }) => (
+                <View key={label} style={{ flex: 1, ...s.subCell }}>
+                  <Text style={s.subLabel}>{label}</Text>
+                  <Text style={s.subValue}>{value}</Text>
+                </View>
+              ))}
+            </View>
+            <View style={{ flexDirection: 'row', gap: 6, marginBottom: 8 }}>
+              {[
+                { label: 'Viewability',  value: `${pacenamiTotal.viewability.toFixed(2)}%`, accent: true },
+                { label: 'Kliks',        value: fmtNum(pacenamiTotal.clicks),               accent: false },
+                { label: 'CTR',          value: `${pacenamiTotal.ctr.toFixed(2)}%`,         accent: true },
+              ].map(({ label, value, accent }) => (
+                <View key={label} style={{ flex: 1, ...s.subCell }}>
+                  <Text style={s.subLabel}>{label}</Text>
+                  <Text style={accent ? { ...s.subValue, color: ACCENT } : s.subValue}>{value}</Text>
+                </View>
+              ))}
+            </View>
           </>
         )}
 
