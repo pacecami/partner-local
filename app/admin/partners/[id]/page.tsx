@@ -387,6 +387,17 @@ export default async function PartnerDetailPage({
                                 )}
                               </>
                             )}
+                            {isBanner && c.pacenami_report_url && (
+                              <a
+                                href={c.pacenami_report_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold"
+                                style={{ background: 'var(--accent)', color: '#000' }}
+                              >
+                                Se fuld rapport →
+                              </a>
+                            )}
                             {showVisual && (
                               <>
                                 {c.impressions != null && (

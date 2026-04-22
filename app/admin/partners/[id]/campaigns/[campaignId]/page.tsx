@@ -52,6 +52,7 @@ export default async function EditCampaignPage({
     const clicks_to_advertiser = clicksToAdvertiserRaw ? parseInt(clicksToAdvertiserRaw) : null
     const pacenamiRaw = (formData.get('pacenami_campaign_id') as string || '').trim()
     const pacenami_campaign_id = pacenamiRaw || null
+    const pacenami_report_url = (formData.get('pacenami_report_url') as string || '').trim() || null
 
     const graphicFile = formData.get('graphic') as File | null
     let graphic_url = campaign.graphic_url
@@ -71,7 +72,7 @@ export default async function EditCampaignPage({
 
     await supabase
       .from('campaigns')
-      .update({ name, status, start_date, end_date, monthly_budget, placements, graphic_url, impressions, clicks, emails_sent, emails_opened, clicks_to_advertiser, pacenami_campaign_id })
+      .update({ name, status, start_date, end_date, monthly_budget, placements, graphic_url, impressions, clicks, emails_sent, emails_opened, clicks_to_advertiser, pacenami_campaign_id, pacenami_report_url })
       .eq('id', campaignId)
 
     redirect(`/admin/partners/${slug}`)
@@ -134,6 +135,21 @@ export default async function EditCampaignPage({
                 style={inputStyle}
               />
             </div>
+            {(campaign.placements ?? []).includes('Banner') && (
+              <div className="col-span-2">
+                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>
+                  Link til fuld Pacenami-rapport <span className="font-normal">(vises som knap hos partneren)</span>
+                </label>
+                <input
+                  name="pacenami_report_url"
+                  type="url"
+                  defaultValue={campaign.pacenami_report_url ?? ''}
+                  placeholder="https://pacenami.pace.dk/..."
+                  className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+                  style={inputStyle}
+                />
+              </div>
+            )}
             <div className="col-span-2">
               <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>
                 Grafik (PNG){campaign.graphic_url ? ' — upload ny for at erstatte' : ''}
