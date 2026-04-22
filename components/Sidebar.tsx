@@ -94,11 +94,11 @@ export default function Sidebar({ role, partnerName, partners = [] }: SidebarPro
 
             {/* Brugere */}
             <Link
-              href="/admin/users"
+              href="/admin/brugere"
               className="flex items-center gap-2.5 px-3 py-2 mt-0.5 rounded-lg text-sm font-medium transition-colors"
               style={{
-                background: pathname === '/admin/users' ? 'var(--surface-2)' : 'transparent',
-                color: pathname === '/admin/users' ? 'var(--foreground)' : 'var(--muted)',
+                background: pathname === '/admin/brugere' ? 'var(--surface-2)' : 'transparent',
+                color: pathname === '/admin/brugere' ? 'var(--foreground)' : 'var(--muted)',
               }}
             >
               <span className="text-xs">👤</span>
