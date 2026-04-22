@@ -1,3 +1,4 @@
+import React from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { fetchGA4Events, type GA4EventResult } from '@/lib/ga4'
@@ -276,49 +277,113 @@ export default async function PartnerDetailPage({
               </tr>
             </thead>
             <tbody>
-              {campaigns.map((c, i) => (
-                <tr key={c.id} style={{ borderBottom: i < campaigns.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                  <td className="pl-4 pr-2 py-4">
-                    {c.graphic_url ? (
-                      <img src={c.graphic_url} alt="" className="w-10 h-7 object-cover rounded" />
-                    ) : (
-                      <div className="w-10 h-7 rounded flex items-center justify-center text-xs" style={{ background: 'var(--surface-2)', color: 'var(--muted)' }}>—</div>
+              {campaigns.map((c, i) => {
+                const hasPerf = c.impressions != null || c.clicks != null || c.emails_sent != null || c.emails_opened != null || c.clicks_to_advertiser != null
+                const placements: string[] = c.placements ?? []
+                const isEmail = placements.some((p: string) => p === 'Nyhedsbreve' || p === 'Tilbudsmail')
+                const isBanner = placements.includes('Banner')
+                const isInapp = placements.includes('Inapp')
+                const isVisual = isBanner || isInapp
+                const showVisual = isVisual || (!isEmail && (c.impressions != null || c.clicks != null))
+                return (
+                  <React.Fragment key={c.id}>
+                    <tr style={{ borderBottom: (!hasPerf && i < campaigns.length - 1) ? '1px solid var(--border)' : 'none' }}>
+                      <td className="pl-4 pr-2 py-4">
+                        {c.graphic_url ? (
+                          <img src={c.graphic_url} alt="" className="w-10 h-7 object-cover rounded" />
+                        ) : (
+                          <div className="w-10 h-7 rounded flex items-center justify-center text-xs" style={{ background: 'var(--surface-2)', color: 'var(--muted)' }}>—</div>
+                        )}
+                      </td>
+                      <td className="px-4 py-4">
+                        <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>{c.name}</span>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex flex-wrap gap-1">
+                          {(c.placements ?? []).map((p: string) => (
+                            <span key={p} className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'var(--surface-2)', color: 'var(--foreground)' }}>{p}</span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4"><StatusBadge status={c.status} /></td>
+                      <td className="px-4 py-4 text-xs whitespace-nowrap" style={{ color: 'var(--muted)' }}>
+                        {c.start_date ? `${c.start_date.slice(0,7)}${c.end_date ? `→${c.end_date.slice(0,7)}` : ''}` : '—'}
+                      </td>
+                      <td className="px-4 py-4 text-sm whitespace-nowrap" style={{ color: 'var(--foreground)' }}>
+                        {c.monthly_budget ? `${c.monthly_budget.toLocaleString('da-DK')} kr` : '—'}
+                      </td>
+                      <td className="px-4 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <a
+                            href={`/admin/partners/${slug}/campaigns/${c.id}`}
+                            className="text-xs px-3 py-1.5 rounded-lg whitespace-nowrap"
+                            style={{ background: 'var(--surface-2)', color: 'var(--foreground)' }}
+                          >
+                            Rediger
+                          </a>
+                          <form action={deleteCampaign} className="inline">
+                            <input type="hidden" name="campaign_id" value={c.id} />
+                            <button type="submit" className="text-xs px-3 py-1.5 rounded-lg" style={{ background: 'var(--surface-2)', color: 'var(--muted)' }}>Slet</button>
+                          </form>
+                        </div>
+                      </td>
+                    </tr>
+                    {hasPerf && (
+                      <tr style={{ borderBottom: i < campaigns.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                        <td />
+                        <td colSpan={6} className="px-4 pb-3">
+                          <div className="flex flex-wrap gap-5">
+                            {isEmail && (
+                              <>
+                                {c.emails_sent != null && (
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-xs" style={{ color: 'var(--muted)' }}>Sendte</span>
+                                    <span className="text-xs font-semibold" style={{ color: 'var(--foreground)' }}>{(c.emails_sent as number).toLocaleString('da-DK')}</span>
+                                  </div>
+                                )}
+                                {c.emails_sent != null && c.emails_opened != null && (
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-xs" style={{ color: 'var(--muted)' }}>Åbningsrate</span>
+                                    <span className="text-xs font-semibold" style={{ color: 'var(--accent)' }}>{((c.emails_opened / c.emails_sent) * 100).toFixed(1)}%</span>
+                                  </div>
+                                )}
+                                {c.clicks_to_advertiser != null && (
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-xs" style={{ color: 'var(--muted)' }}>Kliks til annoncør</span>
+                                    <span className="text-xs font-semibold" style={{ color: 'var(--foreground)' }}>{(c.clicks_to_advertiser as number).toLocaleString('da-DK')}</span>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                            {showVisual && (
+                              <>
+                                {c.impressions != null && (
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-xs" style={{ color: 'var(--muted)' }}>Visninger</span>
+                                    <span className="text-xs font-semibold" style={{ color: 'var(--foreground)' }}>{(c.impressions as number).toLocaleString('da-DK')}</span>
+                                  </div>
+                                )}
+                                {c.clicks != null && (
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-xs" style={{ color: 'var(--muted)' }}>Kliks</span>
+                                    <span className="text-xs font-semibold" style={{ color: 'var(--foreground)' }}>{(c.clicks as number).toLocaleString('da-DK')}</span>
+                                  </div>
+                                )}
+                                {c.impressions != null && c.clicks != null && (
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-xs" style={{ color: 'var(--muted)' }}>{isBanner ? 'Klikrate' : 'CTR'}</span>
+                                    <span className="text-xs font-semibold" style={{ color: 'var(--accent)' }}>{((c.clicks / c.impressions) * 100).toFixed(1)}%</span>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
                     )}
-                  </td>
-                  <td className="px-4 py-4">
-                    <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>{c.name}</span>
-                  </td>
-                  <td className="px-4 py-4">
-                    <div className="flex flex-wrap gap-1">
-                      {(c.placements ?? []).map((p: string) => (
-                        <span key={p} className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'var(--surface-2)', color: 'var(--foreground)' }}>{p}</span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="px-4 py-4"><StatusBadge status={c.status} /></td>
-                  <td className="px-4 py-4 text-xs whitespace-nowrap" style={{ color: 'var(--muted)' }}>
-                    {c.start_date ? `${c.start_date.slice(0,7)}${c.end_date ? `→${c.end_date.slice(0,7)}` : ''}` : '—'}
-                  </td>
-                  <td className="px-4 py-4 text-sm whitespace-nowrap" style={{ color: 'var(--foreground)' }}>
-                    {c.monthly_budget ? `${c.monthly_budget.toLocaleString('da-DK')} kr` : '—'}
-                  </td>
-                  <td className="px-4 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <a
-                        href={`/admin/partners/${slug}/campaigns/${c.id}`}
-                        className="text-xs px-3 py-1.5 rounded-lg whitespace-nowrap"
-                        style={{ background: 'var(--surface-2)', color: 'var(--foreground)' }}
-                      >
-                        Rediger
-                      </a>
-                      <form action={deleteCampaign} className="inline">
-                        <input type="hidden" name="campaign_id" value={c.id} />
-                        <button type="submit" className="text-xs px-3 py-1.5 rounded-lg" style={{ background: 'var(--surface-2)', color: 'var(--muted)' }}>Slet</button>
-                      </form>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                  </React.Fragment>
+                )
+              })}
             </tbody>
           </table>
         )}

@@ -40,10 +40,16 @@ export default async function EditCampaignPage({
     const budgetRaw = (formData.get('monthly_budget') as string).replace(/\./g, '').replace(/,/g, '.').trim()
     const monthly_budget = budgetRaw ? Number(budgetRaw) : null
     const placements = formData.getAll('placements') as string[]
-    const impressionsRaw = (formData.get('impressions') as string).replace(/\./g, '').trim()
-    const clicksRaw = (formData.get('clicks') as string).replace(/\./g, '').trim()
+    const impressionsRaw = (formData.get('impressions') as string || '').replace(/\./g, '').trim()
+    const clicksRaw = (formData.get('clicks') as string || '').replace(/\./g, '').trim()
     const impressions = impressionsRaw ? parseInt(impressionsRaw) : null
     const clicks = clicksRaw ? parseInt(clicksRaw) : null
+    const emailsSentRaw = (formData.get('emails_sent') as string || '').replace(/\./g, '').trim()
+    const emailsOpenedRaw = (formData.get('emails_opened') as string || '').replace(/\./g, '').trim()
+    const clicksToAdvertiserRaw = (formData.get('clicks_to_advertiser') as string || '').replace(/\./g, '').trim()
+    const emails_sent = emailsSentRaw ? parseInt(emailsSentRaw) : null
+    const emails_opened = emailsOpenedRaw ? parseInt(emailsOpenedRaw) : null
+    const clicks_to_advertiser = clicksToAdvertiserRaw ? parseInt(clicksToAdvertiserRaw) : null
 
     const graphicFile = formData.get('graphic') as File | null
     let graphic_url = campaign.graphic_url
@@ -63,7 +69,7 @@ export default async function EditCampaignPage({
 
     await supabase
       .from('campaigns')
-      .update({ name, status, start_date, end_date, monthly_budget, placements, graphic_url, impressions, clicks })
+      .update({ name, status, start_date, end_date, monthly_budget, placements, graphic_url, impressions, clicks, emails_sent, emails_opened, clicks_to_advertiser })
       .eq('id', campaignId)
 
     redirect(`/admin/partners/${slug}`)
@@ -139,13 +145,39 @@ export default async function EditCampaignPage({
                 ))}
               </div>
             </div>
-            <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Visninger</label>
-              <input name="impressions" type="text" inputMode="numeric" defaultValue={campaign.impressions ? campaign.impressions.toLocaleString('da-DK') : ''} placeholder="fx 4.012" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+            <div className="col-span-2 pt-3 border-t" style={{ borderColor: 'var(--border)' }}>
+              <p className="text-xs font-semibold mb-3" style={{ color: 'var(--muted)' }}>
+                Performance — E-mail <span className="font-normal">(Nyhedsbreve / Tilbudsmail)</span>
+              </p>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Antal sendte</label>
+                  <input name="emails_sent" type="text" inputMode="numeric" defaultValue={campaign.emails_sent ? campaign.emails_sent.toLocaleString('da-DK') : ''} placeholder="fx 12.500" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Åbninger <span className="font-normal">(åbningsrate auto)</span></label>
+                  <input name="emails_opened" type="text" inputMode="numeric" defaultValue={campaign.emails_opened ? campaign.emails_opened.toLocaleString('da-DK') : ''} placeholder="fx 3.800" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Kliks til annoncør</label>
+                  <input name="clicks_to_advertiser" type="text" inputMode="numeric" defaultValue={campaign.clicks_to_advertiser ? campaign.clicks_to_advertiser.toLocaleString('da-DK') : ''} placeholder="fx 210" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+                </div>
+              </div>
             </div>
-            <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Klik</label>
-              <input name="clicks" type="text" inputMode="numeric" defaultValue={campaign.clicks ? campaign.clicks.toLocaleString('da-DK') : ''} placeholder="fx 315" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+            <div className="col-span-2 pt-3 border-t" style={{ borderColor: 'var(--border)' }}>
+              <p className="text-xs font-semibold mb-3" style={{ color: 'var(--muted)' }}>
+                Performance — Visninger <span className="font-normal">(Banner / Inapp)</span>
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Visninger</label>
+                  <input name="impressions" type="text" inputMode="numeric" defaultValue={campaign.impressions ? campaign.impressions.toLocaleString('da-DK') : ''} placeholder="fx 4.012" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Kliks <span className="font-normal">(klikrate auto)</span></label>
+                  <input name="clicks" type="text" inputMode="numeric" defaultValue={campaign.clicks ? campaign.clicks.toLocaleString('da-DK') : ''} placeholder="fx 315" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+                </div>
+              </div>
             </div>
           </div>
           <div className="flex justify-end">

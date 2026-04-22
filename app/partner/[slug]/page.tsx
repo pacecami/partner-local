@@ -216,7 +216,7 @@ export default async function PartnerDashboardPage({
                 {campaigns.map((c, i) => (
                   <React.Fragment key={c.id}>
                   <tr
-                    style={{ borderBottom: (i < campaigns.length - 1 && !c.impressions && !c.clicks) ? '1px solid var(--border)' : 'none' }}
+                    style={{ borderBottom: (i < campaigns.length - 1 && !c.impressions && !c.clicks && !c.emails_sent && !c.emails_opened && !c.clicks_to_advertiser) ? '1px solid var(--border)' : 'none' }}
                   >
                     <td className="pl-4 pr-2 py-4">
                       {c.graphic_url ? (
@@ -260,35 +260,73 @@ export default async function PartnerDashboardPage({
                       {c.monthly_budget ? `${c.monthly_budget.toLocaleString('da-DK')} kr` : '—'}
                     </td>
                   </tr>
-                  {(c.impressions || c.clicks) && (
-                    <tr key={`${c.id}-perf`} style={{ borderBottom: i < campaigns.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                      <td />
-                      <td colSpan={5} className="px-4 pb-4">
-                        <div className="flex gap-6">
-                          {c.impressions && (
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs" style={{ color: 'var(--muted)' }}>Visninger</span>
-                              <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{(c.impressions as number).toLocaleString('da-DK')}</span>
-                            </div>
-                          )}
-                          {c.clicks && (
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs" style={{ color: 'var(--muted)' }}>Klik</span>
-                              <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{(c.clicks as number).toLocaleString('da-DK')}</span>
-                            </div>
-                          )}
-                          {c.impressions && c.clicks && (
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs" style={{ color: 'var(--muted)' }}>CTR</span>
-                              <span className="text-sm font-semibold" style={{ color: 'var(--accent)' }}>
-                                {((c.clicks / c.impressions) * 100).toFixed(1)}%
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )}
+                  {(c.impressions != null || c.clicks != null || c.emails_sent != null || c.emails_opened != null || c.clicks_to_advertiser != null) && (() => {
+                    const placements: string[] = c.placements ?? []
+                    const isEmail = placements.some((p: string) => p === 'Nyhedsbreve' || p === 'Tilbudsmail')
+                    const isBanner = placements.includes('Banner')
+                    const isInapp = placements.includes('Inapp')
+                    const isVisual = isBanner || isInapp
+                    const showVisual = isVisual || (!isEmail && (c.impressions != null || c.clicks != null))
+                    return (
+                      <tr style={{ borderBottom: i < campaigns.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                        <td />
+                        <td colSpan={5} className="px-4 pb-4">
+                          <div className="flex flex-wrap gap-6">
+                            {/* E-mail metrics */}
+                            {isEmail && (
+                              <>
+                                {c.emails_sent != null && (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs" style={{ color: 'var(--muted)' }}>Antal sendte</span>
+                                    <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{(c.emails_sent as number).toLocaleString('da-DK')}</span>
+                                  </div>
+                                )}
+                                {c.emails_sent != null && c.emails_opened != null && (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs" style={{ color: 'var(--muted)' }}>Åbningsrate</span>
+                                    <span className="text-sm font-semibold" style={{ color: 'var(--accent)' }}>
+                                      {((c.emails_opened / c.emails_sent) * 100).toFixed(1)}%
+                                    </span>
+                                  </div>
+                                )}
+                                {c.clicks_to_advertiser != null && (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs" style={{ color: 'var(--muted)' }}>Kliks til annoncør</span>
+                                    <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{(c.clicks_to_advertiser as number).toLocaleString('da-DK')}</span>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                            {/* Visual metrics (Banner / Inapp / fallback) */}
+                            {showVisual && (
+                              <>
+                                {c.impressions != null && (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs" style={{ color: 'var(--muted)' }}>Visninger</span>
+                                    <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{(c.impressions as number).toLocaleString('da-DK')}</span>
+                                  </div>
+                                )}
+                                {c.clicks != null && (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs" style={{ color: 'var(--muted)' }}>Kliks</span>
+                                    <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{(c.clicks as number).toLocaleString('da-DK')}</span>
+                                  </div>
+                                )}
+                                {c.impressions != null && c.clicks != null && (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs" style={{ color: 'var(--muted)' }}>{isBanner ? 'Klikrate' : 'CTR'}</span>
+                                    <span className="text-sm font-semibold" style={{ color: 'var(--accent)' }}>
+                                      {((c.clicks / c.impressions) * 100).toFixed(1)}%
+                                    </span>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })()}
                   </React.Fragment>
                 ))}
               </tbody>
