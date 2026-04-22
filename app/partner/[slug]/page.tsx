@@ -468,6 +468,54 @@ export default async function PartnerDashboardPage({
                 )
               })}
             </div>
+
+            {/* I alt — sum på tværs af alle properties */}
+            {(() => {
+              const totals: Record<string, number> = {}
+              ga4Properties.forEach(({ aliases, events: eventsStr }, i) => {
+                const events = ga4Results[i]
+                if (!events || events.length === 0) return
+                const aliasList = aliases ? aliases.split(',').map(a => a.trim()) : []
+                const eventList = (eventsStr ?? '').split(',').map(e => e.trim())
+                const aliasMap = Object.fromEntries(eventList.map((e, idx) => [e, aliasList[idx] || e]))
+                events.forEach(({ eventName, count }: { eventName: string; count: number }) => {
+                  const alias = aliasMap[eventName] || eventName
+                  totals[alias] = (totals[alias] ?? 0) + count
+                })
+              })
+              const grandTotal = Object.values(totals).reduce((s, c) => s + c, 0)
+              if (grandTotal === 0) return null
+              return (
+                <div
+                  className="rounded-xl p-5"
+                  style={{ background: 'var(--surface)', border: '1px solid var(--accent)', borderOpacity: 0.4 }}
+                >
+                  <p className="text-xs font-semibold mb-4" style={{ color: 'var(--accent)' }}>
+                    I alt
+                  </p>
+                  <div className="space-y-2">
+                    {Object.entries(totals).map(([alias, count]) => (
+                      <div
+                        key={alias}
+                        className="flex items-center justify-between py-2 border-b last:border-0"
+                        style={{ borderColor: 'var(--border)' }}
+                      >
+                        <span className="text-sm" style={{ color: 'var(--foreground)' }}>{alias}</span>
+                        <span className="text-sm font-bold tabular-nums" style={{ color: 'var(--accent)' }}>
+                          {count.toLocaleString('da-DK')}
+                        </span>
+                      </div>
+                    ))}
+                    <div className="flex items-center justify-between pt-3 mt-1" style={{ borderTop: '2px solid var(--border)' }}>
+                      <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Samlet total</span>
+                      <span className="text-lg font-bold tabular-nums" style={{ color: 'var(--accent)' }}>
+                        {grandTotal.toLocaleString('da-DK')}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
           </section>
         )}
 
