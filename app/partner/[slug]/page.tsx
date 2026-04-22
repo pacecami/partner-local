@@ -109,7 +109,7 @@ export default async function PartnerDashboardPage({
             className="text-lg font-bold tracking-tight"
             style={{ color: 'var(--accent)' }}
           >
-            HeyMate
+            Pace Group ApS
           </span>
           <span style={{ color: 'var(--border)' }}>|</span>
           <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>
