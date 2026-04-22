@@ -341,7 +341,16 @@ export default async function PartnerDashboardPage({
               <h2 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>
                 Statistik
               </h2>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
+                {/* Download rapport */}
+                <a
+                  href={`/partner/${slug}/rapport?month=${selectedMonth}`}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+                  style={{ background: 'var(--accent)', color: '#000' }}
+                >
+                  ↓ Download rapport
+                </a>
+                <div className="flex items-center gap-2">
                 {selectedMonth > EARLIEST ? (
                   <a
                     href={`?month=${prevMonth(selectedMonth)}`}
@@ -367,6 +376,7 @@ export default async function PartnerDashboardPage({
                 ) : (
                   <span className="px-3 py-1.5 rounded-lg text-xs" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--muted)', opacity: 0.4 }}>Næste →</span>
                 )}
+                </div>
               </div>
             </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
