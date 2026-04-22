@@ -1,3 +1,4 @@
+import React from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { fetchGA4Events } from '@/lib/ga4'
@@ -213,8 +214,8 @@ export default async function PartnerDashboardPage({
               </thead>
               <tbody>
                 {campaigns.map((c, i) => (
+                  <React.Fragment key={c.id}>
                   <tr
-                    key={c.id}
                     style={{ borderBottom: (i < campaigns.length - 1 && !c.impressions && !c.clicks) ? '1px solid var(--border)' : 'none' }}
                   >
                     <td className="pl-4 pr-2 py-4">
@@ -288,6 +289,7 @@ export default async function PartnerDashboardPage({
                       </td>
                     </tr>
                   )}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
