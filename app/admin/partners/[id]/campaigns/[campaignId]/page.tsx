@@ -40,6 +40,10 @@ export default async function EditCampaignPage({
     const budgetRaw = (formData.get('monthly_budget') as string).replace(/\./g, '').replace(/,/g, '.').trim()
     const monthly_budget = budgetRaw ? Number(budgetRaw) : null
     const placements = formData.getAll('placements') as string[]
+    const impressionsRaw = (formData.get('impressions') as string).replace(/\./g, '').trim()
+    const clicksRaw = (formData.get('clicks') as string).replace(/\./g, '').trim()
+    const impressions = impressionsRaw ? parseInt(impressionsRaw) : null
+    const clicks = clicksRaw ? parseInt(clicksRaw) : null
 
     const graphicFile = formData.get('graphic') as File | null
     let graphic_url = campaign.graphic_url
@@ -59,7 +63,7 @@ export default async function EditCampaignPage({
 
     await supabase
       .from('campaigns')
-      .update({ name, status, start_date, end_date, monthly_budget, placements, graphic_url })
+      .update({ name, status, start_date, end_date, monthly_budget, placements, graphic_url, impressions, clicks })
       .eq('id', campaignId)
 
     redirect(`/admin/partners/${slug}`)
@@ -134,6 +138,14 @@ export default async function EditCampaignPage({
                   </label>
                 ))}
               </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Visninger</label>
+              <input name="impressions" type="text" inputMode="numeric" defaultValue={campaign.impressions ? campaign.impressions.toLocaleString('da-DK') : ''} placeholder="fx 4.012" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Klik</label>
+              <input name="clicks" type="text" inputMode="numeric" defaultValue={campaign.clicks ? campaign.clicks.toLocaleString('da-DK') : ''} placeholder="fx 315" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
             </div>
           </div>
           <div className="flex justify-end">

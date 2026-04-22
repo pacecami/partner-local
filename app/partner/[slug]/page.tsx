@@ -215,7 +215,7 @@ export default async function PartnerDashboardPage({
                 {campaigns.map((c, i) => (
                   <tr
                     key={c.id}
-                    style={{ borderBottom: i < campaigns.length - 1 ? '1px solid var(--border)' : 'none' }}
+                    style={{ borderBottom: (i < campaigns.length - 1 && !c.impressions && !c.clicks) ? '1px solid var(--border)' : 'none' }}
                   >
                     <td className="pl-4 pr-2 py-4">
                       {c.graphic_url ? (
@@ -259,6 +259,35 @@ export default async function PartnerDashboardPage({
                       {c.monthly_budget ? `${c.monthly_budget.toLocaleString('da-DK')} kr` : '—'}
                     </td>
                   </tr>
+                  {(c.impressions || c.clicks) && (
+                    <tr key={`${c.id}-perf`} style={{ borderBottom: i < campaigns.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                      <td />
+                      <td colSpan={5} className="px-4 pb-4">
+                        <div className="flex gap-6">
+                          {c.impressions && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs" style={{ color: 'var(--muted)' }}>Visninger</span>
+                              <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{(c.impressions as number).toLocaleString('da-DK')}</span>
+                            </div>
+                          )}
+                          {c.clicks && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs" style={{ color: 'var(--muted)' }}>Klik</span>
+                              <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{(c.clicks as number).toLocaleString('da-DK')}</span>
+                            </div>
+                          )}
+                          {c.impressions && c.clicks && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs" style={{ color: 'var(--muted)' }}>CTR</span>
+                              <span className="text-sm font-semibold" style={{ color: 'var(--accent)' }}>
+                                {((c.clicks / c.impressions) * 100).toFixed(1)}%
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                 ))}
               </tbody>
             </table>
