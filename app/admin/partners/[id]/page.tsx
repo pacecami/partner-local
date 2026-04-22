@@ -632,7 +632,9 @@ export default async function PartnerDetailPage({
               const eventList = (eventsStr ?? '').split(',').map(e => e.trim())
               const aliasMap = Object.fromEntries(eventList.map((e, idx) => [e, aliasList[idx] || e]))
               events.forEach(({ eventName, count }: { eventName: string; count: number }) => {
-                const alias = aliasMap[eventName] || eventName
+                const raw = aliasMap[eventName] || eventName
+                // Slå iOS og Android-varianter sammen til én linje
+                const alias = raw.replace(/\s+(iOS|Android)$/i, '').trim()
                 totals[alias] = (totals[alias] ?? 0) + count
               })
             })
