@@ -4,6 +4,24 @@ export const dynamic = 'force-dynamic'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'Maj', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec']
 
+function getISOWeek(date: Date): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+  const dayNum = d.getUTCDay() || 7
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum)
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
+  return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7)
+}
+
+function getWeeksForMonth(year: number, month: number): number[] {
+  // month er 1-indexed
+  const weeks = new Set<number>()
+  const daysInMonth = new Date(year, month, 0).getDate()
+  for (let day = 1; day <= daysInMonth; day++) {
+    weeks.add(getISOWeek(new Date(year, month - 1, day)))
+  }
+  return Array.from(weeks).sort((a, b) => a - b)
+}
+
 const PARTNER_COLORS: Record<string, string> = {
   'Motorstyrelsen': '#f5d000',
   'DCC Energi': '#22c55e',
@@ -169,25 +187,31 @@ export default async function OverblikPage({
                   >
                     Placering
                   </th>
-                  {MONTHS.map((m, i) => (
-                    <th
-                      key={m}
-                      className="px-2 py-3 text-center text-xs font-medium"
-                      style={{
-                        color: (i + 1) === currentMonth && selectedYear === currentYear ? 'var(--accent)' : 'var(--muted)',
-                        borderLeft: '1px solid var(--border)',
-                        minWidth: '75px',
-                        background: (i + 1) === currentMonth && selectedYear === currentYear
-                          ? 'rgba(245,208,0,0.07)'
-                          : 'transparent',
-                      }}
-                    >
-                      {m}
-                      {(i + 1) === currentMonth && selectedYear === currentYear && (
-                        <span className="block text-xs font-normal" style={{ color: 'var(--accent)' }}>↑ nu</span>
-                      )}
-                    </th>
-                  ))}
+                  {MONTHS.map((m, i) => {
+                    const isCurrent = (i + 1) === currentMonth && selectedYear === currentYear
+                    const weeks = getWeeksForMonth(selectedYear, i + 1)
+                    const weekLabel = weeks.length > 0
+                      ? `uge ${weeks[0]}${weeks.length > 1 ? `–${weeks[weeks.length - 1]}` : ''}`
+                      : ''
+                    return (
+                      <th
+                        key={m}
+                        className="px-2 py-2 text-center text-xs font-medium"
+                        style={{
+                          color: isCurrent ? 'var(--accent)' : 'var(--muted)',
+                          borderLeft: '1px solid var(--border)',
+                          minWidth: '80px',
+                          background: isCurrent ? 'rgba(245,208,0,0.07)' : 'transparent',
+                        }}
+                      >
+                        <span className="block font-semibold">{m}</span>
+                        <span className="block text-xs font-normal opacity-70">{weekLabel}</span>
+                        {isCurrent && (
+                          <span className="block text-xs font-normal" style={{ color: 'var(--accent)' }}>↑ nu</span>
+                        )}
+                      </th>
+                    )
+                  })}
                   <th
                     className="px-3 py-3 text-xs font-medium"
                     style={{ color: 'var(--muted)', borderLeft: '1px solid var(--border)', minWidth: '80px' }}
