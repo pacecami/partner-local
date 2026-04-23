@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import TestMailButton from './TestMailButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,6 +40,17 @@ export default async function IndstillingerPage() {
         <p className="text-sm mt-0.5" style={{ color: 'var(--muted)' }}>
           GA4 property-konfiguration per partner
         </p>
+      </div>
+
+      {/* E-mail påmindelser */}
+      <div className="rounded-xl p-6 mb-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+        <h2 className="font-semibold text-sm mb-1" style={{ color: 'var(--foreground)' }}>E-mail påmindelser</h2>
+        <p className="text-xs mb-4" style={{ color: 'var(--muted)' }}>
+          Automatisk påmindelse til cp@pace.dk 14 dage inden en mailkampagne starter.
+          Kræver <code className="px-1 py-0.5 rounded text-xs" style={{ background: 'var(--surface-2)' }}>RESEND_API_KEY</code> og{' '}
+          <code className="px-1 py-0.5 rounded text-xs" style={{ background: 'var(--surface-2)' }}>SUPABASE_SERVICE_ROLE_KEY</code> i .env.local
+        </p>
+        <TestMailButton />
       </div>
 
       <div className="rounded-xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
