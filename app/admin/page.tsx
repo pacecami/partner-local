@@ -22,7 +22,7 @@ export default async function AdminPage() {
 
   const { data: partners } = await supabase
     .from('partners')
-    .select('id, name, slug, created_at')
+    .select('id, name, slug, created_at, subscription_budget, subscription_start, subscription_end')
     .order('name')
 
   const { data: campaigns } = await supabase
@@ -36,7 +36,15 @@ export default async function AdminPage() {
   }))
 
   const activeCampaigns = (campaigns ?? []).filter(c => c.status === 'active')
-  const totalBudget = activeCampaigns.reduce((sum, c) => sum + (c.monthly_budget ?? 0), 0)
+  const totalCampaignBudget = activeCampaigns.reduce((sum, c) => sum + (c.monthly_budget ?? 0), 0)
+  const totalSubBudget = (partners ?? []).reduce((sum, p: any) => {
+    if (!p.subscription_start || !p.subscription_end || !p.subscription_budget) return sum
+    const start = new Date(p.subscription_start)
+    const end = new Date(p.subscription_end)
+    const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1
+    return sum + (months > 0 ? Math.round(p.subscription_budget / months) : 0)
+  }, 0)
+  const totalBudget = totalCampaignBudget + totalSubBudget
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -65,7 +73,7 @@ export default async function AdminPage() {
         <div className="rounded-xl p-5" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
           <p className="text-xs uppercase tracking-wider mb-2" style={{ color: 'var(--muted)' }}>Samlet budget/md</p>
           <p className="text-3xl font-bold" style={{ color: 'var(--accent)' }}>
-            {totalBudget >= 1000 ? `${Math.round(totalBudget / 1000)}k` : totalBudget}
+            {totalBudget > 0 ? `${totalBudget.toLocaleString('da-DK')} kr` : '—'}
           </p>
         </div>
       </div>
@@ -97,7 +105,18 @@ export default async function AdminPage() {
             <tbody>
               {partnersWithCampaigns.map((p, i) => {
                 const active = p.campaigns.filter(c => c.status === 'active')
-                const budget = active.reduce((s, c) => s + (c.monthly_budget ?? 0), 0)
+                const campaignBudget = active.reduce((s, c) => s + (c.monthly_budget ?? 0), 0)
+
+                // Abonnement/md — samme beregning som på partner-siden
+                let subMonthly = 0
+                if (p.subscription_start && p.subscription_end && p.subscription_budget) {
+                  const start = new Date(p.subscription_start)
+                  const end = new Date(p.subscription_end)
+                  const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1
+                  subMonthly = months > 0 ? Math.round(p.subscription_budget / months) : 0
+                }
+
+                const budget = campaignBudget + subMonthly
                 return (
                   <tr
                     key={p.id}
@@ -109,7 +128,7 @@ export default async function AdminPage() {
                     <td className="px-6 py-4 text-sm" style={{ color: 'var(--muted)' }}>{p.campaigns.length}</td>
                     <td className="px-6 py-4 text-sm" style={{ color: 'var(--green)' }}>{active.length}</td>
                     <td className="px-6 py-4 text-sm" style={{ color: 'var(--foreground)' }}>
-                      {budget > 0 ? (budget >= 1000 ? `${Math.round(budget / 1000)}k` : budget) : '—'}
+                      {budget > 0 ? `${budget.toLocaleString('da-DK')} kr` : '—'}
                     </td>
                     <td className="px-6 py-4 text-right">
                       <a
