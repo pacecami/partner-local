@@ -66,10 +66,10 @@ export default async function PartnerDetailPage({
   if (!partner) redirect('/admin')
 
   const ga4Properties = [
-    { id: partner.ga4_property_id, events: partner.ga4_events_1, label: partner.ga4_label_1, aliases: partner.ga4_aliases_1 },
-    { id: partner.ga4_property_id_2, events: partner.ga4_events_2, label: partner.ga4_label_2, aliases: partner.ga4_aliases_2 },
-    { id: partner.ga4_property_id_3, events: null, label: null, aliases: null },
-  ].filter(p => p.id) as { id: string; events: string | null; label: string | null; aliases: string | null }[]
+    { id: partner.ga4_property_id,   events: partner.ga4_events_1, label: 'TjekBil web', aliases: partner.ga4_aliases_1 },
+    { id: partner.ga4_property_id_2, events: partner.ga4_events_2, label: 'TjekBil app', aliases: partner.ga4_aliases_2 },
+    { id: partner.ga4_property_id_3, events: null,                 label: 'Bilhandel',   aliases: null },
+  ].filter(p => p.id) as { id: string; events: string | null; label: string; aliases: string | null }[]
 
   const ga4Results = await Promise.all(
     ga4Properties.map(({ id, events }) => {
@@ -119,15 +119,6 @@ export default async function PartnerDetailPage({
     'use server'
     const supabase = await createClient()
     const name = (formData.get('name') as string).trim()
-    const ga4_1 = (formData.get('ga4_property_id') as string).trim()
-    const ga4_2 = (formData.get('ga4_property_id_2') as string).trim()
-    const ga4_3 = (formData.get('ga4_property_id_3') as string).trim()
-    const events_1 = (formData.get('ga4_events_1') as string).trim()
-    const events_2 = (formData.get('ga4_events_2') as string).trim()
-    const label_1 = (formData.get('ga4_label_1') as string).trim()
-    const label_2 = (formData.get('ga4_label_2') as string).trim()
-    const aliases_1 = (formData.get('ga4_aliases_1') as string).trim()
-    const aliases_2 = (formData.get('ga4_aliases_2') as string).trim()
     const subscription_start = (formData.get('subscription_start') as string) || null
     const subscription_end = (formData.get('subscription_end') as string) || null
     const subBudgetRaw = (formData.get('subscription_budget') as string).replace(/\./g, '').replace(/,/g, '.').trim()
@@ -136,18 +127,37 @@ export default async function PartnerDetailPage({
       .from('partners')
       .update({
         name,
-        ga4_property_id: ga4_1 || null,
-        ga4_property_id_2: ga4_2 || null,
-        ga4_property_id_3: ga4_3 || null,
-        ga4_events_1: events_1 || null,
-        ga4_events_2: events_2 || null,
-        ga4_label_1: label_1 || null,
-        ga4_label_2: label_2 || null,
-        ga4_aliases_1: aliases_1 || null,
-        ga4_aliases_2: aliases_2 || null,
         subscription_start,
         subscription_end,
         subscription_budget,
+      })
+      .eq('id', partner.id)
+    redirect(`/admin/partners/${slug}`)
+  }
+
+  async function updateEvents(formData: FormData) {
+    'use server'
+    const supabase = await createClient()
+    const rawEvents1  = formData.getAll('ga4_event_1')  as string[]
+    const rawAliases1 = formData.getAll('ga4_alias_1')  as string[]
+    const rawEvents2  = formData.getAll('ga4_event_2')  as string[]
+    const rawAliases2 = formData.getAll('ga4_alias_2')  as string[]
+
+    // Filter empty rows, keep event+alias pairs aligned
+    const pairs1 = rawEvents1
+      .map((e, i) => ({ e: e.trim(), a: (rawAliases1[i] ?? '').trim() }))
+      .filter(p => p.e)
+    const pairs2 = rawEvents2
+      .map((e, i) => ({ e: e.trim(), a: (rawAliases2[i] ?? '').trim() }))
+      .filter(p => p.e)
+
+    await supabase
+      .from('partners')
+      .update({
+        ga4_events_1:  pairs1.length ? pairs1.map(p => p.e).join(',') : null,
+        ga4_aliases_1: pairs1.length ? pairs1.map(p => p.a).join(',') : null,
+        ga4_events_2:  pairs2.length ? pairs2.map(p => p.e).join(',') : null,
+        ga4_aliases_2: pairs2.length ? pairs2.map(p => p.a).join(',') : null,
       })
       .eq('id', partner.id)
     redirect(`/admin/partners/${slug}`)
@@ -488,29 +498,9 @@ export default async function PartnerDetailPage({
         <h2 className="font-semibold text-sm mb-4" style={{ color: 'var(--foreground)' }}>Partnerinfo</h2>
         <form action={updatePartner} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <div>
+            <div className="col-span-2">
               <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Navn *</label>
               <input name="name" required defaultValue={partner.name} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>GA4 Property ID 1</label>
-              <input name="ga4_property_id" defaultValue={partner.ga4_property_id ?? ''} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>GA4 Property ID 2</label>
-              <input name="ga4_property_id_2" defaultValue={partner.ga4_property_id_2 ?? ''} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>GA4 Property ID 3</label>
-              <input name="ga4_property_id_3" defaultValue={partner.ga4_property_id_3 ?? ''} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Label — Property 1</label>
-              <input name="ga4_label_1" defaultValue={partner.ga4_label_1 ?? ''} placeholder="fx TjekBil web" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Label — Property 2</label>
-              <input name="ga4_label_2" defaultValue={partner.ga4_label_2 ?? ''} placeholder="fx TjekBil app" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
             </div>
             <div>
               <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Abonnement startdato</label>
@@ -524,28 +514,138 @@ export default async function PartnerDetailPage({
               <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Samlet budget for perioden (kr, ex. moms)</label>
               <input name="subscription_budget" type="text" inputMode="numeric" defaultValue={partner.subscription_budget ? partner.subscription_budget.toLocaleString('da-DK') : ''} placeholder="120.000" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
             </div>
-            <div className="col-span-2">
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Events — Property 1 <span className="font-normal">(kommasepareret, tekniske navne)</span></label>
-              <input name="ga4_events_1" defaultValue={partner.ga4_events_1 ?? ''} placeholder="event_navn_1,event_navn_2" className="w-full px-3 py-2 rounded-lg text-sm outline-none font-mono" style={inputStyle} />
-            </div>
-            <div className="col-span-2">
-              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--muted)' }}>Visningsnavne — Property 1 <span className="font-normal">(hvad partneren ser, samme rækkefølge)</span></label>
-              <input name="ga4_aliases_1" defaultValue={partner.ga4_aliases_1 ?? ''} placeholder="App visninger,Nummerplade klik,App download" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
-            </div>
-            <div className="col-span-2">
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Events — Property 2 <span className="font-normal">(kommasepareret, tekniske navne)</span></label>
-              <input name="ga4_events_2" defaultValue={partner.ga4_events_2 ?? ''} placeholder="event_navn_1,event_navn_2" className="w-full px-3 py-2 rounded-lg text-sm outline-none font-mono" style={inputStyle} />
-            </div>
-            <div className="col-span-2">
-              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--muted)' }}>Visningsnavne — Property 2 <span className="font-normal">(hvad partneren ser, samme rækkefølge)</span></label>
-              <input name="ga4_aliases_2" defaultValue={partner.ga4_aliases_2 ?? ''} placeholder="App visninger,Nummerplade klik" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
-            </div>
           </div>
           <div className="flex justify-end">
             <button type="submit" className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: 'var(--accent)', color: '#000' }}>Gem ændringer</button>
           </div>
         </form>
       </section>
+
+      {/* GA4 Events */}
+      {(() => {
+        // Parse existing events + aliases into rows; pad with empty rows
+        const ev1 = (partner.ga4_events_1 ?? '').split(',').map((e: string) => e.trim()).filter(Boolean)
+        const al1 = (partner.ga4_aliases_1 ?? '').split(',').map((a: string) => a.trim())
+        const rows1: { ev: string; al: string }[] = [
+          ...ev1.map((ev: string, i: number) => ({ ev, al: al1[i] ?? '' })),
+          ...Array(Math.max(0, 5 - ev1.length)).fill({ ev: '', al: '' }),
+        ]
+
+        const ev2 = (partner.ga4_events_2 ?? '').split(',').map((e: string) => e.trim()).filter(Boolean)
+        const al2 = (partner.ga4_aliases_2 ?? '').split(',').map((a: string) => a.trim())
+        const rows2: { ev: string; al: string }[] = [
+          ...ev2.map((ev: string, i: number) => ({ ev, al: al2[i] ?? '' })),
+          ...Array(Math.max(0, 5 - ev2.length)).fill({ ev: '', al: '' }),
+        ]
+
+        const hasAnyProperty = partner.ga4_property_id || partner.ga4_property_id_2
+
+        return (
+          <section className="rounded-xl p-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>GA4 Events</h2>
+              <a
+                href="/admin/indstillinger"
+                className="text-xs px-3 py-1.5 rounded-lg"
+                style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--muted)' }}
+              >
+                ⚙️ Rediger property IDs →
+              </a>
+            </div>
+
+            {!hasAnyProperty ? (
+              <p className="text-sm" style={{ color: 'var(--muted)' }}>
+                Ingen GA4 properties konfigureret endnu.{' '}
+                <a href="/admin/indstillinger" style={{ color: 'var(--accent)' }}>Tilføj under Indstillinger →</a>
+              </p>
+            ) : (
+              <form action={updateEvents} className="space-y-6">
+                {/* Property 1 — TjekBil web */}
+                {partner.ga4_property_id && (
+                  <div>
+                    <div className="flex items-baseline gap-2 mb-3">
+                      <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--foreground)' }}>TjekBil web</p>
+                      <p className="text-xs font-mono" style={{ color: 'var(--muted)' }}>{partner.ga4_property_id}</p>
+                    </div>
+                    <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+                      <div className="grid grid-cols-2" style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
+                        <div className="px-3 py-2 text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Teknisk event navn</div>
+                        <div className="px-3 py-2 text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)', borderLeft: '1px solid var(--border)' }}>Visningsnavn (hvad partneren ser)</div>
+                      </div>
+                      {rows1.map((row, i) => (
+                        <div key={i} className="grid grid-cols-2" style={{ borderBottom: i < rows1.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                          <div className="px-2 py-1.5">
+                            <input
+                              name="ga4_event_1"
+                              defaultValue={row.ev}
+                              placeholder="event_teknisk_navn"
+                              className="w-full px-2 py-1 rounded text-xs outline-none font-mono"
+                              style={{ background: 'transparent', color: 'var(--foreground)' }}
+                            />
+                          </div>
+                          <div className="px-2 py-1.5" style={{ borderLeft: '1px solid var(--border)' }}>
+                            <input
+                              name="ga4_alias_1"
+                              defaultValue={row.al}
+                              placeholder="Visningsnavn"
+                              className="w-full px-2 py-1 rounded text-xs outline-none"
+                              style={{ background: 'transparent', color: 'var(--foreground)' }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Property 2 — TjekBil app */}
+                {partner.ga4_property_id_2 && (
+                  <div>
+                    <div className="flex items-baseline gap-2 mb-3">
+                      <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--foreground)' }}>TjekBil app</p>
+                      <p className="text-xs font-mono" style={{ color: 'var(--muted)' }}>{partner.ga4_property_id_2}</p>
+                    </div>
+                    <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+                      <div className="grid grid-cols-2" style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
+                        <div className="px-3 py-2 text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Teknisk event navn</div>
+                        <div className="px-3 py-2 text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)', borderLeft: '1px solid var(--border)' }}>Visningsnavn (hvad partneren ser)</div>
+                      </div>
+                      {rows2.map((row, i) => (
+                        <div key={i} className="grid grid-cols-2" style={{ borderBottom: i < rows2.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                          <div className="px-2 py-1.5">
+                            <input
+                              name="ga4_event_2"
+                              defaultValue={row.ev}
+                              placeholder="event_teknisk_navn"
+                              className="w-full px-2 py-1 rounded text-xs outline-none font-mono"
+                              style={{ background: 'transparent', color: 'var(--foreground)' }}
+                            />
+                          </div>
+                          <div className="px-2 py-1.5" style={{ borderLeft: '1px solid var(--border)' }}>
+                            <input
+                              name="ga4_alias_2"
+                              defaultValue={row.al}
+                              placeholder="Visningsnavn"
+                              className="w-full px-2 py-1 rounded text-xs outline-none"
+                              style={{ background: 'transparent', color: 'var(--foreground)' }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-end">
+                  <button type="submit" className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: 'var(--accent)', color: '#000' }}>
+                    Gem events
+                  </button>
+                </div>
+              </form>
+            )}
+          </section>
+        )
+      })()}
 
       {/* GA4 Stats */}
       {ga4Properties.length > 0 && (

@@ -66,9 +66,10 @@ export default async function PartnerDashboardPage({
   if (!partner) redirect('/')
 
   const ga4Properties = [
-    { id: partner.ga4_property_id, events: partner.ga4_events_1, label: partner.ga4_label_1, aliases: partner.ga4_aliases_1 },
-    { id: partner.ga4_property_id_2, events: partner.ga4_events_2, label: partner.ga4_label_2, aliases: partner.ga4_aliases_2 },
-  ].filter(p => p.id) as { id: string; events: string | null; label: string | null; aliases: string | null }[]
+    { id: partner.ga4_property_id,   events: partner.ga4_events_1, label: 'TjekBil web', aliases: partner.ga4_aliases_1 },
+    { id: partner.ga4_property_id_2, events: partner.ga4_events_2, label: 'TjekBil app', aliases: partner.ga4_aliases_2 },
+    { id: partner.ga4_property_id_3, events: null,                 label: 'Bilhandel',   aliases: null },
+  ].filter(p => p.id) as { id: string; events: string | null; label: string; aliases: string | null }[]
 
   const ga4Results = await Promise.all(
     ga4Properties.map(({ id, events }) => {
