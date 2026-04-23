@@ -28,9 +28,9 @@ export default function Sidebar({ role, partnerName, partners = [] }: SidebarPro
       style={{ background: 'var(--surface)', borderRight: '1px solid var(--border)' }}
     >
       <div className="px-5 py-5 border-b" style={{ borderColor: 'var(--border)' }}>
-        <div className="font-bold text-base" style={{ color: 'var(--accent)' }}>
+        <Link href="/admin" className="font-bold text-base hover:opacity-80 transition-opacity" style={{ color: 'var(--accent)' }}>
           {partnerName ?? 'Partner Portal'}
-        </div>
+        </Link>
         <div className="text-xs mt-0.5 uppercase tracking-wider" style={{ color: 'var(--muted)' }}>
           {role === 'admin' ? 'Admin' : 'Partner'}
         </div>
