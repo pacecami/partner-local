@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import nodemailer from 'nodemailer'
 
 export const dynamic = 'force-dynamic'
 
@@ -8,10 +9,11 @@ export async function GET(request: Request) {
   const testMode = searchParams.get('test') === 'true'
 
   // Check required env vars
-  const resendKey = process.env.RESEND_API_KEY
-  if (!resendKey) {
+  const smtpUser = process.env.OUTLOOK_EMAIL
+  const smtpPass = process.env.OUTLOOK_PASSWORD
+  if (!smtpUser || !smtpPass) {
     return NextResponse.json({
-      error: 'RESEND_API_KEY mangler i .env.local — opret konto på resend.com og tilføj nøglen',
+      error: 'OUTLOOK_EMAIL eller OUTLOOK_PASSWORD mangler i .env.local',
     }, { status: 500 })
   }
 
@@ -21,6 +23,20 @@ export async function GET(request: Request) {
       error: 'SUPABASE_SERVICE_ROLE_KEY mangler i .env.local — find den på Supabase → Settings → API',
     }, { status: 500 })
   }
+
+  // Nodemailer via Outlook SMTP
+  const transporter = nodemailer.createTransport({
+    host: 'smtp.office365.com',
+    port: 587,
+    secure: false, // STARTTLS
+    auth: {
+      user: smtpUser,
+      pass: smtpPass,
+    },
+    tls: {
+      ciphers: 'SSLv3',
+    },
+  })
 
   // Supabase admin client (bypasser RLS)
   const supabase = createClient(
@@ -76,8 +92,8 @@ export async function GET(request: Request) {
     const portalLink = `${baseUrl}/admin/partners/${partner.slug}`
 
     const subject = testMode
-      ? `[TEST] 📧 Påmindelse: ${placementText} til ${partner.name} — ${periodeText}`
-      : `📧 Husk at udforme ${placementText} til ${partner.name} — ${periodeText}`
+      ? `[TEST] Påmindelse: ${placementText} til ${partner.name} — ${periodeText}`
+      : `Påmindelse: Husk at udforme ${placementText} til ${partner.name} — ${periodeText}`
 
     const textBody = `Hej Camilla
 
@@ -90,36 +106,39 @@ Mvh
 Partner Portalen`
 
     const htmlBody = `
-<p>Hej Camilla</p>
-<p>Nu er det snart tid til at udforme <strong>${placementText}</strong> til ${partner.name}, som er planlagt til <strong>${periodeText}</strong>.</p>
-<p>Tjek inde i <a href="${portalLink}" style="color:#f5d000">portalen</a>, for at se, hvad artiklen skal handle om.</p>
-<br>
-<p style="color:#888;font-size:12px">Mvh Partner Portalen</p>
-`
+<div style="font-family:sans-serif;max-width:520px;color:#111">
+  <p>Hej Camilla</p>
+  <p>Nu er det snart tid til at udforme <strong>${placementText}</strong> til <strong>${partner.name}</strong>, som er planlagt til <strong>${periodeText}</strong>.</p>
+  <p>Tjek inde i <a href="${portalLink}" style="color:#c8a800;font-weight:600">portalen</a>, for at se, hvad artiklen skal handle om.</p>
+  <br>
+  <p style="color:#999;font-size:12px">Mvh Partner Portalen</p>
+</div>`
 
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${resendKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: process.env.RESEND_FROM_EMAIL ?? 'onboarding@resend.dev',
-        to: ['cp@pace.dk'],
+    try {
+      await transporter.sendMail({
+        from: `"Partner Portalen" <${smtpUser}>`,
+        to: 'cp@pace.dk',
         subject,
         text: textBody,
         html: htmlBody,
-      }),
-    })
-
-    const data = await res.json()
-    results.push({
-      kampagne: c.name,
-      partner: partner.name,
-      placering: placementText,
-      periode: periodeText,
-      status: res.ok ? '✓ Sendt' : `✗ Fejl: ${data.message ?? JSON.stringify(data)}`,
-    })
+      })
+      results.push({
+        kampagne: c.name,
+        partner: partner.name,
+        placering: placementText,
+        periode: periodeText,
+        status: '✓ Sendt',
+      })
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err)
+      results.push({
+        kampagne: c.name,
+        partner: partner.name,
+        placering: placementText,
+        periode: periodeText,
+        status: `✗ Fejl: ${message}`,
+      })
+    }
   }
 
   const sentCount = results.filter(r => r.status.startsWith('✓')).length
