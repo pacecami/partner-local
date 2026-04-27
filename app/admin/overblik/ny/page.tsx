@@ -42,7 +42,7 @@ export default async function NewPlanningEntryPage() {
       months: monthsData,
     })
 
-    redirect('/admin/overblik')
+    redirect('/admin/overblik?saved=true')
   }
 
   const inputStyle = {

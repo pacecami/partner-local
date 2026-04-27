@@ -150,7 +150,7 @@ export default async function PartnerDetailPage({
         subscription_budget,
       })
       .eq('id', partner.id)
-    redirect(`/admin/partners/${slug}`)
+    redirect(`/admin/partners/${slug}?saved=true`)
   }
 
   async function updateEvents(formData: FormData) {
@@ -183,7 +183,7 @@ export default async function PartnerDetailPage({
       ga4_aliases_4: p4.length ? p4.map(p => p.a).join(',') : null,
     }).eq('id', partner.id)
 
-    redirect(`/admin/partners/${slug}`)
+    redirect(`/admin/partners/${slug}?saved=true`)
   }
 
   async function addCampaign(formData: FormData) {
@@ -221,7 +221,7 @@ export default async function PartnerDetailPage({
       placements,
       graphic_url,
     })
-    redirect(`/admin/partners/${slug}`)
+    redirect(`/admin/partners/${slug}?saved=true`)
   }
 
   async function deleteCampaign(formData: FormData) {

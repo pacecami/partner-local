@@ -31,7 +31,7 @@ export default async function IndstillingerPage() {
         })
       )
     )
-    redirect('/admin/indstillinger')
+    redirect('/admin/indstillinger?saved=true')
   }
 
   const inputStyle = {

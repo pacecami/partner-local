@@ -75,7 +75,7 @@ export default async function EditCampaignPage({
       .update({ name, status, start_date, end_date, monthly_budget, placements, graphic_url, impressions, clicks, emails_sent, emails_opened, clicks_to_advertiser, pacenami_campaign_id, pacenami_report_url })
       .eq('id', campaignId)
 
-    redirect(`/admin/partners/${slug}`)
+    redirect(`/admin/partners/${slug}?saved=true`)
   }
 
   const inputStyle = {

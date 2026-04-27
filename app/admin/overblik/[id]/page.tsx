@@ -53,7 +53,7 @@ export default async function EditPlanningEntryPage({
       .update({ category, placement, placement_comment, sort_order, year, months: monthsData })
       .eq('id', id)
 
-    redirect('/admin/overblik')
+    redirect('/admin/overblik?saved=true')
   }
 
   async function deleteEntry() {

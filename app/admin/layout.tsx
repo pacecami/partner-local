@@ -1,5 +1,7 @@
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import Sidebar from '@/components/Sidebar'
+import SavedToast from '@/components/SavedToast'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,6 +19,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <main className="flex-1 p-8" style={{ background: 'var(--background)' }}>
         {children}
       </main>
+      <Suspense>
+        <SavedToast />
+      </Suspense>
     </div>
   )
 }
