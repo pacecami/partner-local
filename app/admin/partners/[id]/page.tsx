@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { fetchGA4Events, type GA4EventResult } from '@/lib/ga4'
 import { fetchPacenamiStats, type PacenamiStats } from '@/lib/pacenami'
+import { GA4_PROPS } from '@/app/admin/indstillinger/page'
 
 export const dynamic = 'force-dynamic'
 
@@ -65,11 +66,28 @@ export default async function PartnerDetailPage({
 
   if (!partner) redirect('/admin')
 
-  const ga4Properties = [
-    { id: partner.ga4_property_id,   events: partner.ga4_events_1, label: 'TjekBil web', aliases: partner.ga4_aliases_1 },
-    { id: partner.ga4_property_id_2, events: partner.ga4_events_2, label: 'TjekBil app', aliases: partner.ga4_aliases_2 },
-    { id: partner.ga4_property_id_3, events: null,                 label: 'Bilhandel',   aliases: null },
-  ].filter(p => p.id) as { id: string; events: string | null; label: string; aliases: string | null }[]
+  // Hent globale GA4 property IDs
+  const { data: settingsRows } = await supabase.from('settings').select('key, value')
+  const settings = Object.fromEntries((settingsRows ?? []).map(r => [r.key, r.value]))
+
+  const enabledFlags = [
+    partner.ga4_prop_1_enabled,
+    partner.ga4_prop_2_enabled,
+    partner.ga4_prop_3_enabled,
+    partner.ga4_prop_4_enabled,
+  ]
+  const partnerEvents  = [partner.ga4_events_1,  partner.ga4_events_2,  partner.ga4_events_3,  partner.ga4_events_4]
+  const partnerAliases = [partner.ga4_aliases_1, partner.ga4_aliases_2, partner.ga4_aliases_3, partner.ga4_aliases_4]
+
+  const ga4Properties = GA4_PROPS
+    .map(({ key, label }, i) => ({
+      id:      settings[key] ?? '',
+      label,
+      events:  partnerEvents[i]  ?? null,
+      aliases: partnerAliases[i] ?? null,
+      enabled: enabledFlags[i]   ?? false,
+    }))
+    .filter(p => p.id && p.enabled) as { id: string; label: string; events: string | null; aliases: string | null; enabled: boolean }[]
 
   const ga4Results = await Promise.all(
     ga4Properties.map(({ id, events }) => {
@@ -138,28 +156,33 @@ export default async function PartnerDetailPage({
   async function updateEvents(formData: FormData) {
     'use server'
     const supabase = await createClient()
-    const rawEvents1  = formData.getAll('ga4_event_1')  as string[]
-    const rawAliases1 = formData.getAll('ga4_alias_1')  as string[]
-    const rawEvents2  = formData.getAll('ga4_event_2')  as string[]
-    const rawAliases2 = formData.getAll('ga4_alias_2')  as string[]
 
-    // Filter empty rows, keep event+alias pairs aligned
-    const pairs1 = rawEvents1
-      .map((e, i) => ({ e: e.trim(), a: (rawAliases1[i] ?? '').trim() }))
-      .filter(p => p.e)
-    const pairs2 = rawEvents2
-      .map((e, i) => ({ e: e.trim(), a: (rawAliases2[i] ?? '').trim() }))
-      .filter(p => p.e)
+    function parsePairs(eventsKey: string, aliasesKey: string) {
+      const evs = formData.getAll(eventsKey)  as string[]
+      const als = formData.getAll(aliasesKey) as string[]
+      return evs.map((e, i) => ({ e: e.trim(), a: (als[i] ?? '').trim() })).filter(p => p.e)
+    }
 
-    await supabase
-      .from('partners')
-      .update({
-        ga4_events_1:  pairs1.length ? pairs1.map(p => p.e).join(',') : null,
-        ga4_aliases_1: pairs1.length ? pairs1.map(p => p.a).join(',') : null,
-        ga4_events_2:  pairs2.length ? pairs2.map(p => p.e).join(',') : null,
-        ga4_aliases_2: pairs2.length ? pairs2.map(p => p.a).join(',') : null,
-      })
-      .eq('id', partner.id)
+    const p1 = parsePairs('ga4_event_1', 'ga4_alias_1')
+    const p2 = parsePairs('ga4_event_2', 'ga4_alias_2')
+    const p3 = parsePairs('ga4_event_3', 'ga4_alias_3')
+    const p4 = parsePairs('ga4_event_4', 'ga4_alias_4')
+
+    await supabase.from('partners').update({
+      ga4_prop_1_enabled: formData.get('ga4_prop_1_enabled') === 'on',
+      ga4_prop_2_enabled: formData.get('ga4_prop_2_enabled') === 'on',
+      ga4_prop_3_enabled: formData.get('ga4_prop_3_enabled') === 'on',
+      ga4_prop_4_enabled: formData.get('ga4_prop_4_enabled') === 'on',
+      ga4_events_1:  p1.length ? p1.map(p => p.e).join(',') : null,
+      ga4_aliases_1: p1.length ? p1.map(p => p.a).join(',') : null,
+      ga4_events_2:  p2.length ? p2.map(p => p.e).join(',') : null,
+      ga4_aliases_2: p2.length ? p2.map(p => p.a).join(',') : null,
+      ga4_events_3:  p3.length ? p3.map(p => p.e).join(',') : null,
+      ga4_aliases_3: p3.length ? p3.map(p => p.a).join(',') : null,
+      ga4_events_4:  p4.length ? p4.map(p => p.e).join(',') : null,
+      ga4_aliases_4: p4.length ? p4.map(p => p.a).join(',') : null,
+    }).eq('id', partner.id)
+
     redirect(`/admin/partners/${slug}`)
   }
 
@@ -523,26 +546,23 @@ export default async function PartnerDetailPage({
 
       {/* GA4 Events */}
       {(() => {
-        // Parse existing events + aliases into rows; pad with empty rows
-        const ev1 = (partner.ga4_events_1 ?? '').split(',').map((e: string) => e.trim()).filter(Boolean)
-        const al1 = (partner.ga4_aliases_1 ?? '').split(',').map((a: string) => a.trim())
-        const rows1: { ev: string; al: string }[] = [
-          ...ev1.map((ev: string, i: number) => ({ ev, al: al1[i] ?? '' })),
-          ...Array(Math.max(0, 5 - ev1.length)).fill({ ev: '', al: '' }),
-        ]
+        const allProps = GA4_PROPS.map(({ key, label }, i) => {
+          const id = settings[key] ?? ''
+          const enabled = enabledFlags[i] ?? false
+          const evRaw = (partnerEvents[i] ?? '').split(',').map((e: string) => e.trim()).filter(Boolean)
+          const alRaw = (partnerAliases[i] ?? '').split(',').map((a: string) => a.trim())
+          const rows = [
+            ...evRaw.map((ev: string, j: number) => ({ ev, al: alRaw[j] ?? '' })),
+            ...Array(Math.max(0, 5 - evRaw.length)).fill({ ev: '', al: '' }),
+          ]
+          return { key, label, id, enabled, rows, idx: i + 1 }
+        })
 
-        const ev2 = (partner.ga4_events_2 ?? '').split(',').map((e: string) => e.trim()).filter(Boolean)
-        const al2 = (partner.ga4_aliases_2 ?? '').split(',').map((a: string) => a.trim())
-        const rows2: { ev: string; al: string }[] = [
-          ...ev2.map((ev: string, i: number) => ({ ev, al: al2[i] ?? '' })),
-          ...Array(Math.max(0, 5 - ev2.length)).fill({ ev: '', al: '' }),
-        ]
-
-        const hasAnyProperty = partner.ga4_property_id || partner.ga4_property_id_2
+        const hasAnyId = allProps.some(p => p.id)
 
         return (
           <section className="rounded-xl p-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-5">
               <h2 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>GA4 Events</h2>
               <a
                 href="/admin/indstillinger"
@@ -553,68 +573,60 @@ export default async function PartnerDetailPage({
               </a>
             </div>
 
-            {!hasAnyProperty ? (
+            {!hasAnyId ? (
               <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                Ingen GA4 properties konfigureret endnu.{' '}
+                Ingen GA4 property IDs konfigureret.{' '}
                 <a href="/admin/indstillinger" style={{ color: 'var(--accent)' }}>Tilføj under Indstillinger →</a>
               </p>
             ) : (
               <form action={updateEvents} className="space-y-6">
-                {/* Property 1 — TjekBil web */}
-                {partner.ga4_property_id && (
-                  <div>
-                    <div className="flex items-baseline gap-2 mb-3">
-                      <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--foreground)' }}>TjekBil web</p>
-                      <p className="text-xs font-mono" style={{ color: 'var(--muted)' }}>{partner.ga4_property_id}</p>
-                    </div>
-                    <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--border)' }}>
-                      <div className="grid grid-cols-2" style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
-                        <div className="px-3 py-2 text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Teknisk event navn</div>
-                        <div className="px-3 py-2 text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)', borderLeft: '1px solid var(--border)' }}>Visningsnavn (hvad partneren ser)</div>
-                      </div>
-                      {rows1.map((row, i) => (
-                        <div key={i} className="grid grid-cols-2" style={{ borderBottom: i < rows1.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                          <div className="px-2 py-1.5">
-                            <input
-                              name="ga4_event_1"
-                              defaultValue={row.ev}
-                              placeholder="event_teknisk_navn"
-                              className="w-full px-2 py-1 rounded text-xs outline-none font-mono"
-                              style={{ background: 'transparent', color: 'var(--foreground)' }}
-                            />
-                          </div>
-                          <div className="px-2 py-1.5" style={{ borderLeft: '1px solid var(--border)' }}>
-                            <input
-                              name="ga4_alias_1"
-                              defaultValue={row.al}
-                              placeholder="Visningsnavn"
-                              className="w-full px-2 py-1 rounded text-xs outline-none"
-                              style={{ background: 'transparent', color: 'var(--foreground)' }}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                {/* Checkboxes — hvilke properties er aktive for denne partner */}
+                <div>
+                  <p className="text-xs font-medium mb-3" style={{ color: 'var(--muted)' }}>Aktive properties for denne partner</p>
+                  <div className="flex flex-wrap gap-3">
+                    {allProps.map(p => (
+                      <label
+                        key={p.key}
+                        className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm cursor-pointer"
+                        style={{
+                          background: p.enabled ? 'var(--accent)' : 'var(--surface-2)',
+                          color: p.enabled ? '#000' : 'var(--muted)',
+                          border: '1px solid var(--border)',
+                          opacity: p.id ? 1 : 0.4,
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          name={`ga4_prop_${p.idx}_enabled`}
+                          defaultChecked={p.enabled}
+                          disabled={!p.id}
+                          className="accent-black"
+                        />
+                        <span className="font-medium text-xs">{p.label}</span>
+                        {p.id && <span className="text-xs font-mono opacity-60">{p.id}</span>}
+                        {!p.id && <span className="text-xs opacity-50">(ikke konfigureret)</span>}
+                      </label>
+                    ))}
                   </div>
-                )}
+                </div>
 
-                {/* Property 2 — TjekBil app */}
-                {partner.ga4_property_id_2 && (
-                  <div>
-                    <div className="flex items-baseline gap-2 mb-3">
-                      <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--foreground)' }}>TjekBil app</p>
-                      <p className="text-xs font-mono" style={{ color: 'var(--muted)' }}>{partner.ga4_property_id_2}</p>
+                {/* Event-rækker per property */}
+                {allProps.filter(p => p.id).map(p => (
+                  <div key={p.key}>
+                    <div className="flex items-baseline gap-2 mb-2">
+                      <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--foreground)' }}>{p.label}</p>
+                      <p className="text-xs font-mono" style={{ color: 'var(--muted)' }}>{p.id}</p>
                     </div>
                     <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--border)' }}>
                       <div className="grid grid-cols-2" style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
                         <div className="px-3 py-2 text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Teknisk event navn</div>
                         <div className="px-3 py-2 text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)', borderLeft: '1px solid var(--border)' }}>Visningsnavn (hvad partneren ser)</div>
                       </div>
-                      {rows2.map((row, i) => (
-                        <div key={i} className="grid grid-cols-2" style={{ borderBottom: i < rows2.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                      {p.rows.map((row: { ev: string; al: string }, i: number) => (
+                        <div key={i} className="grid grid-cols-2" style={{ borderBottom: i < p.rows.length - 1 ? '1px solid var(--border)' : 'none' }}>
                           <div className="px-2 py-1.5">
                             <input
-                              name="ga4_event_2"
+                              name={`ga4_event_${p.idx}`}
                               defaultValue={row.ev}
                               placeholder="event_teknisk_navn"
                               className="w-full px-2 py-1 rounded text-xs outline-none font-mono"
@@ -623,7 +635,7 @@ export default async function PartnerDetailPage({
                           </div>
                           <div className="px-2 py-1.5" style={{ borderLeft: '1px solid var(--border)' }}>
                             <input
-                              name="ga4_alias_2"
+                              name={`ga4_alias_${p.idx}`}
                               defaultValue={row.al}
                               placeholder="Visningsnavn"
                               className="w-full px-2 py-1 rounded text-xs outline-none"
@@ -634,7 +646,7 @@ export default async function PartnerDetailPage({
                       ))}
                     </div>
                   </div>
-                )}
+                ))}
 
                 <div className="flex justify-end">
                   <button type="submit" className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: 'var(--accent)', color: '#000' }}>

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { fetchGA4Events } from '@/lib/ga4'
 import { fetchPacenamiStats, type PacenamiStats } from '@/lib/pacenami'
+import { GA4_PROPS } from '@/app/admin/indstillinger/page'
 
 export const dynamic = 'force-dynamic'
 
@@ -65,11 +66,21 @@ export default async function PartnerDashboardPage({
 
   if (!partner) redirect('/')
 
-  const ga4Properties = [
-    { id: partner.ga4_property_id,   events: partner.ga4_events_1, label: 'TjekBil web', aliases: partner.ga4_aliases_1 },
-    { id: partner.ga4_property_id_2, events: partner.ga4_events_2, label: 'TjekBil app', aliases: partner.ga4_aliases_2 },
-    { id: partner.ga4_property_id_3, events: null,                 label: 'Bilhandel',   aliases: null },
-  ].filter(p => p.id) as { id: string; events: string | null; label: string; aliases: string | null }[]
+  const { data: settingsRows } = await supabase.from('settings').select('key, value')
+  const settings = Object.fromEntries((settingsRows ?? []).map(r => [r.key, r.value]))
+
+  const partnerEventsArr  = [partner.ga4_events_1,  partner.ga4_events_2,  partner.ga4_events_3,  partner.ga4_events_4]
+  const partnerAliasesArr = [partner.ga4_aliases_1, partner.ga4_aliases_2, partner.ga4_aliases_3, partner.ga4_aliases_4]
+  const enabledArr = [partner.ga4_prop_1_enabled, partner.ga4_prop_2_enabled, partner.ga4_prop_3_enabled, partner.ga4_prop_4_enabled]
+
+  const ga4Properties = GA4_PROPS
+    .map(({ key, label }, i) => ({
+      id:      settings[key] ?? '',
+      label,
+      events:  partnerEventsArr[i]  ?? null,
+      aliases: partnerAliasesArr[i] ?? null,
+    }))
+    .filter((_, i) => enabledArr[i] && (settings[GA4_PROPS[i].key] ?? '')) as { id: string; label: string; events: string | null; aliases: string | null }[]
 
   const ga4Results = await Promise.all(
     ga4Properties.map(({ id, events }) => {
