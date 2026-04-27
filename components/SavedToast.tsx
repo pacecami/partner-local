@@ -10,6 +10,8 @@ export default function SavedToast() {
   const [visible, setVisible] = useState(false)
   const [animating, setAnimating] = useState(false)
   const triggered = useRef(false)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (searchParams.get('saved') === 'true' && !triggered.current) {
@@ -23,18 +25,23 @@ export default function SavedToast() {
       const newUrl = params.toString() ? `${pathname}?${params}` : pathname
       router.replace(newUrl, { scroll: false })
 
-      // Skjul toasten efter 3 sekunder
-      const timer = setTimeout(() => setAnimating(false), 3000)
-      const hideTimer = setTimeout(() => {
+      // Skjul toasten efter 3 sekunder — timerne gemmes i refs
+      // så de ikke annulleres når searchParams ændrer sig (pga. router.replace)
+      timerRef.current = setTimeout(() => setAnimating(false), 3000)
+      hideTimerRef.current = setTimeout(() => {
         setVisible(false)
         triggered.current = false
       }, 3400)
-      return () => {
-        clearTimeout(timer)
-        clearTimeout(hideTimer)
-      }
     }
   }, [searchParams])
+
+  // Ryd kun op ved unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
+    }
+  }, [])
 
   if (!visible) return null
 
