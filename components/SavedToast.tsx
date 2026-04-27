@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSearchParams, usePathname, useRouter } from 'next/navigation'
 
 export default function SavedToast() {
@@ -9,9 +9,11 @@ export default function SavedToast() {
   const router = useRouter()
   const [visible, setVisible] = useState(false)
   const [animating, setAnimating] = useState(false)
+  const triggered = useRef(false)
 
   useEffect(() => {
-    if (searchParams.get('saved') === 'true') {
+    if (searchParams.get('saved') === 'true' && !triggered.current) {
+      triggered.current = true
       setVisible(true)
       setAnimating(true)
 
@@ -23,7 +25,10 @@ export default function SavedToast() {
 
       // Skjul toasten efter 3 sekunder
       const timer = setTimeout(() => setAnimating(false), 3000)
-      const hideTimer = setTimeout(() => setVisible(false), 3400)
+      const hideTimer = setTimeout(() => {
+        setVisible(false)
+        triggered.current = false
+      }, 3400)
       return () => {
         clearTimeout(timer)
         clearTimeout(hideTimer)
