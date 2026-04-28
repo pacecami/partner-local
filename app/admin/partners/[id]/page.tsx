@@ -102,6 +102,12 @@ export default async function PartnerDetailPage({
     .eq('partner_id', partner.id)
     .order('start_date', { ascending: false })
 
+  const { data: fixedPlacements } = await supabase
+    .from('fixed_placements')
+    .select('*')
+    .eq('partner_id', partner.id)
+    .order('sort_order', { ascending: true })
+
   // Pacenami banner-statistik
   const bannerCampaigns = (campaigns ?? []).filter(c =>
     c.pacenami_campaign_id && (c.placements ?? []).includes('Banner')
@@ -229,6 +235,38 @@ export default async function PartnerDetailPage({
     const supabase = await createClient()
     const campaignId = formData.get('campaign_id') as string
     await supabase.from('campaigns').delete().eq('id', campaignId)
+    redirect(`/admin/partners/${slug}`)
+  }
+
+  async function addFixedPlacement(formData: FormData) {
+    'use server'
+    const supabase = await createClient()
+    const name = (formData.get('fp_name') as string).trim()
+    const sort_order = parseInt(formData.get('fp_sort_order') as string) || 0
+    const imageFile = formData.get('fp_image') as File | null
+    let image_url: string | null = null
+    if (imageFile && imageFile.size > 0) {
+      const bytes = await imageFile.arrayBuffer()
+      const filename = `${Date.now()}-${imageFile.name}`
+      const { data: uploadData } = await supabase.storage
+        .from('placement-images')
+        .upload(filename, Buffer.from(bytes), { contentType: imageFile.type || 'image/png' })
+      if (uploadData) {
+        const { data: urlData } = supabase.storage
+          .from('placement-images')
+          .getPublicUrl(uploadData.path)
+        image_url = urlData.publicUrl
+      }
+    }
+    await supabase.from('fixed_placements').insert({ partner_id: partner.id, name, image_url, sort_order })
+    redirect(`/admin/partners/${slug}?saved=true`)
+  }
+
+  async function deleteFixedPlacement(formData: FormData) {
+    'use server'
+    const supabase = await createClient()
+    const fpId = formData.get('fp_id') as string
+    await supabase.from('fixed_placements').delete().eq('id', fpId)
     redirect(`/admin/partners/${slug}`)
   }
 
@@ -463,6 +501,59 @@ export default async function PartnerDetailPage({
             </tbody>
           </table>
         )}
+      </section>
+
+      {/* Faste placeringer */}
+      <section className="rounded-xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+        <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
+          <h2 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>
+            Faste placeringer ({fixedPlacements?.length ?? 0})
+          </h2>
+        </div>
+
+        {/* Eksisterende */}
+        {fixedPlacements && fixedPlacements.length > 0 && (
+          <div className="p-6 grid grid-cols-2 gap-4 sm:grid-cols-3 border-b" style={{ borderColor: 'var(--border)' }}>
+            {fixedPlacements.map(fp => (
+              <div key={fp.id} className="rounded-xl overflow-hidden" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+                {fp.image_url ? (
+                  <img src={fp.image_url} alt={fp.name} className="w-full object-cover" style={{ maxHeight: '140px' }} />
+                ) : (
+                  <div className="w-full flex items-center justify-center text-xs" style={{ height: '100px', color: 'var(--muted)' }}>Intet billede</div>
+                )}
+                <div className="px-3 py-2 flex items-center justify-between">
+                  <span className="text-xs font-medium" style={{ color: 'var(--foreground)' }}>{fp.name}</span>
+                  <form action={deleteFixedPlacement}>
+                    <input type="hidden" name="fp_id" value={fp.id} />
+                    <button type="submit" className="text-xs px-2 py-1 rounded" style={{ color: '#ef4444', background: 'transparent' }}>Slet</button>
+                  </form>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Tilføj ny */}
+        <form action={addFixedPlacement} className="p-6 space-y-4" encType="multipart/form-data">
+          <p className="text-xs font-semibold" style={{ color: 'var(--muted)' }}>Tilføj fast placering</p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Navn *</label>
+              <input name="fp_name" required placeholder="fx Forsikring & finansiering — banner" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Rækkefølge</label>
+              <input name="fp_sort_order" type="number" defaultValue={0} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Billede (screenshot af placeringen)</label>
+              <input name="fp_image" type="file" accept="image/*" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <button type="submit" className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: 'var(--accent)', color: '#000' }}>+ Tilføj placering</button>
+          </div>
+        </form>
       </section>
 
       {/* Add campaign */}

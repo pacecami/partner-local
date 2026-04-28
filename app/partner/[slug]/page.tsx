@@ -95,6 +95,12 @@ export default async function PartnerDashboardPage({
     .eq('partner_id', partner.id)
     .order('start_date', { ascending: false })
 
+  const { data: fixedPlacements } = await supabase
+    .from('fixed_placements')
+    .select('*')
+    .eq('partner_id', partner.id)
+    .order('sort_order', { ascending: true })
+
   const activeCampaigns = (campaigns ?? []).filter(c => c.status === 'active')
   const campaignBudget = (campaigns ?? []).reduce((sum, c) => sum + (c.monthly_budget ?? 0), 0)
 
@@ -390,6 +396,43 @@ export default async function PartnerDashboardPage({
             </table>
           )}
         </section>
+
+        {/* Faste placeringer */}
+        {fixedPlacements && fixedPlacements.length > 0 && (
+          <section className="space-y-4">
+            <h2 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>
+              Faste placeringer
+            </h2>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+              {fixedPlacements.map(fp => (
+                <div
+                  key={fp.id}
+                  className="rounded-xl overflow-hidden"
+                  style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+                >
+                  {fp.image_url ? (
+                    <img
+                      src={fp.image_url}
+                      alt={fp.name}
+                      className="w-full object-cover"
+                      style={{ maxHeight: '160px' }}
+                    />
+                  ) : (
+                    <div
+                      className="w-full flex items-center justify-center text-xs"
+                      style={{ height: '120px', background: 'var(--surface-2)', color: 'var(--muted)' }}
+                    >
+                      Billede mangler
+                    </div>
+                  )}
+                  <div className="px-4 py-3">
+                    <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>{fp.name}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* GA4 stats */}
         {ga4Properties.length > 0 && (
