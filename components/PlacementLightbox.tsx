@@ -6,6 +6,7 @@ type Placement = {
   id: string
   name: string
   image_url: string | null
+  url: string | null
 }
 
 export default function PlacementLightbox({ placements }: { placements: Placement[] }) {
@@ -56,6 +57,18 @@ export default function PlacementLightbox({ placements }: { placements: Placemen
             )}
             <div className="px-4 py-3">
               <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>{fp.name}</p>
+              {fp.url && (
+                <a
+                  href={fp.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs mt-0.5 block truncate"
+                  style={{ color: 'var(--accent)' }}
+                  title={fp.url}
+                >
+                  {fp.url}
+                </a>
+              )}
             </div>
           </div>
         ))}
@@ -127,6 +140,23 @@ export default function PlacementLightbox({ placements }: { placements: Placemen
           >
             {open.name}
           </p>
+          {open.url && (
+            <a
+              href={open.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={e => e.stopPropagation()}
+              style={{
+                marginTop: '6px',
+                color: 'var(--accent)',
+                fontSize: '12px',
+                opacity: 0.9,
+                textDecoration: 'underline',
+              }}
+            >
+              {open.url}
+            </a>
+          )}
         </div>
       )}
     </>

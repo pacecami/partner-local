@@ -243,6 +243,7 @@ export default async function PartnerDetailPage({
     const supabase = await createClient()
     const name = (formData.get('fp_name') as string).trim()
     const sort_order = parseInt(formData.get('fp_sort_order') as string) || 0
+    const url = (formData.get('fp_url') as string).trim() || null
     const imageFile = formData.get('fp_image') as File | null
     let image_url: string | null = null
     if (imageFile && imageFile.size > 0) {
@@ -258,7 +259,7 @@ export default async function PartnerDetailPage({
         image_url = urlData.publicUrl
       }
     }
-    await supabase.from('fixed_placements').insert({ partner_id: partner.id, name, image_url, sort_order })
+    await supabase.from('fixed_placements').insert({ partner_id: partner.id, name, image_url, sort_order, url })
     redirect(`/admin/partners/${slug}?saved=true`)
   }
 
@@ -372,9 +373,23 @@ export default async function PartnerDetailPage({
                 ) : (
                   <div className="w-full flex items-center justify-center text-xs" style={{ height: '100px', color: 'var(--muted)' }}>Intet billede</div>
                 )}
-                <div className="px-3 py-2 flex items-center justify-between">
-                  <span className="text-xs font-medium" style={{ color: 'var(--foreground)' }}>{fp.name}</span>
-                  <form action={deleteFixedPlacement}>
+                <div className="px-3 py-2 flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium truncate" style={{ color: 'var(--foreground)' }}>{fp.name}</p>
+                    {fp.url && (
+                      <a
+                        href={fp.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs truncate block"
+                        style={{ color: 'var(--accent)' }}
+                        title={fp.url}
+                      >
+                        {fp.url}
+                      </a>
+                    )}
+                  </div>
+                  <form action={deleteFixedPlacement} className="shrink-0">
                     <input type="hidden" name="fp_id" value={fp.id} />
                     <button type="submit" className="text-xs px-2 py-1 rounded" style={{ color: '#ef4444', background: 'transparent' }}>Slet</button>
                   </form>
@@ -395,6 +410,10 @@ export default async function PartnerDetailPage({
             <div>
               <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Rækkefølge</label>
               <input name="fp_sort_order" type="number" defaultValue={0} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>URL (linker til)</label>
+              <input name="fp_url" type="url" placeholder="https://www.eksempel.dk/side" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
             </div>
             <div className="col-span-2">
               <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Billede (screenshot af placeringen)</label>
