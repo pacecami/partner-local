@@ -726,7 +726,7 @@ export default async function PartnerDetailPage({
             <div className="col-span-2">
               <label className="block text-xs font-medium mb-2" style={{ color: 'var(--muted)' }}>Placeringer</label>
               <div className="flex flex-wrap gap-2">
-                {['Inapp', 'Nyhedsbreve', 'Tilbudsmail', 'Banner', 'Placeringer på TjekBil', 'Placeringer på Bilhandel'].map(p => (
+                {['Inapp', 'Nyhedsbreve', 'Tilbudsmail', 'Banner', 'Placeringer på TjekBil', 'Placeringer på Bilhandel', 'Facebook'].map(p => (
                   <label key={p} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs cursor-pointer" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--foreground)' }}>
                     <input type="checkbox" name="placements" value={p} className="accent-yellow-400" />
                     {p}
