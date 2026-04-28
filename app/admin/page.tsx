@@ -30,12 +30,18 @@ export default async function AdminPage() {
     .select('id, partner_id, name, status, start_date, end_date, monthly_budget')
     .order('start_date', { ascending: false })
 
+  const { data: fixedPlacements } = await supabase
+    .from('fixed_placements')
+    .select('id, partner_id')
+
   const partnersWithCampaigns = (partners ?? []).map(p => ({
     ...p,
     campaigns: (campaigns ?? []).filter(c => c.partner_id === p.id),
+    fixedCount: (fixedPlacements ?? []).filter(fp => fp.partner_id === p.id).length,
   }))
 
   const activeCampaigns = (campaigns ?? []).filter(c => c.status === 'active')
+  const totalActive = activeCampaigns.length + (fixedPlacements ?? []).length
   const totalCampaignBudget = activeCampaigns.reduce((sum, c) => sum + (c.monthly_budget ?? 0), 0)
   const totalSubBudget = (partners ?? []).reduce((sum, p: any) => {
     if (!p.subscription_start || !p.subscription_end || !p.subscription_budget) return sum
@@ -68,7 +74,7 @@ export default async function AdminPage() {
       <div className="grid grid-cols-2 gap-4 mb-8">
         <div className="rounded-xl p-5" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
           <p className="text-xs uppercase tracking-wider mb-2" style={{ color: 'var(--muted)' }}>Aktive kampagner</p>
-          <p className="text-3xl font-bold" style={{ color: 'var(--green)' }}>{activeCampaigns.length}</p>
+          <p className="text-3xl font-bold" style={{ color: 'var(--green)' }}>{totalActive}</p>
         </div>
         <div className="rounded-xl p-5" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
           <p className="text-xs uppercase tracking-wider mb-2" style={{ color: 'var(--muted)' }}>Samlet budget/md</p>
@@ -105,6 +111,7 @@ export default async function AdminPage() {
             <tbody>
               {partnersWithCampaigns.map((p, i) => {
                 const active = p.campaigns.filter(c => c.status === 'active')
+                const activeCount = active.length + p.fixedCount
                 const campaignBudget = active.reduce((s, c) => s + (c.monthly_budget ?? 0), 0)
 
                 // Abonnement/md — samme beregning som på partner-siden
@@ -126,7 +133,7 @@ export default async function AdminPage() {
                       <span className="font-medium text-sm" style={{ color: 'var(--foreground)' }}>{p.name}</span>
                     </td>
                     <td className="px-6 py-4 text-sm" style={{ color: 'var(--muted)' }}>{p.campaigns.length}</td>
-                    <td className="px-6 py-4 text-sm" style={{ color: 'var(--green)' }}>{active.length}</td>
+                    <td className="px-6 py-4 text-sm" style={{ color: 'var(--green)' }}>{activeCount}</td>
                     <td className="px-6 py-4 text-sm" style={{ color: 'var(--foreground)' }}>
                       {budget > 0 ? `${budget.toLocaleString('da-DK')} kr` : '—'}
                     </td>
