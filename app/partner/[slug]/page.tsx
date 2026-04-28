@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { fetchGA4Events } from '@/lib/ga4'
 import { fetchPacenamiStats, type PacenamiStats } from '@/lib/pacenami'
 import { GA4_PROPS } from '@/app/admin/indstillinger/page'
+import PlacementLightbox from '@/components/PlacementLightbox'
 
 export const dynamic = 'force-dynamic'
 
@@ -403,34 +404,7 @@ export default async function PartnerDashboardPage({
             <h2 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>
               Faste placeringer
             </h2>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-              {fixedPlacements.map(fp => (
-                <div
-                  key={fp.id}
-                  className="rounded-xl overflow-hidden"
-                  style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
-                >
-                  {fp.image_url ? (
-                    <img
-                      src={fp.image_url}
-                      alt={fp.name}
-                      className="w-full object-cover"
-                      style={{ maxHeight: '160px' }}
-                    />
-                  ) : (
-                    <div
-                      className="w-full flex items-center justify-center text-xs"
-                      style={{ height: '120px', background: 'var(--surface-2)', color: 'var(--muted)' }}
-                    >
-                      Billede mangler
-                    </div>
-                  )}
-                  <div className="px-4 py-3">
-                    <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>{fp.name}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <PlacementLightbox placements={fixedPlacements} />
           </section>
         )}
 
