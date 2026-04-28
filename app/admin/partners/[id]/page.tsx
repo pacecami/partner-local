@@ -389,10 +389,19 @@ export default async function PartnerDetailPage({
                       </a>
                     )}
                   </div>
-                  <form action={deleteFixedPlacement} className="shrink-0">
-                    <input type="hidden" name="fp_id" value={fp.id} />
-                    <button type="submit" className="text-xs px-2 py-1 rounded" style={{ color: '#ef4444', background: 'transparent' }}>Slet</button>
-                  </form>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <a
+                      href={`/admin/partners/${slug}/placements/${fp.id}`}
+                      className="text-xs px-2 py-1 rounded"
+                      style={{ background: 'var(--surface)', color: 'var(--foreground)', border: '1px solid var(--border)' }}
+                    >
+                      Rediger
+                    </a>
+                    <form action={deleteFixedPlacement}>
+                      <input type="hidden" name="fp_id" value={fp.id} />
+                      <button type="submit" className="text-xs px-2 py-1 rounded" style={{ color: '#ef4444', background: 'transparent' }}>Slet</button>
+                    </form>
+                  </div>
                 </div>
               </div>
             ))}
