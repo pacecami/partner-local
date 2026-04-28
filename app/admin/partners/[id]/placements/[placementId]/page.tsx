@@ -98,8 +98,6 @@ export default async function EditPlacementPage({
                 <option value="Bilhandel">Bilhandel</option>
                 <option value="TjekBil">TjekBil</option>
                 <option value="TjekBilsyn">TjekBilsyn</option>
-                <option value="Inapp">Inapp</option>
-                <option value="Nyhedsbrev">Nyhedsbrev</option>
               </select>
             </div>
             <div>
