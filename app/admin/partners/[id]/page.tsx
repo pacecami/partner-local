@@ -259,7 +259,8 @@ export default async function PartnerDetailPage({
         image_url = urlData.publicUrl
       }
     }
-    await supabase.from('fixed_placements').insert({ partner_id: partner.id, name, image_url, sort_order, url })
+    const site = (formData.get('fp_site') as string).trim() || null
+    await supabase.from('fixed_placements').insert({ partner_id: partner.id, name, image_url, sort_order, url, site })
     redirect(`/admin/partners/${slug}?saved=true`)
   }
 
@@ -375,7 +376,14 @@ export default async function PartnerDetailPage({
                 )}
                 <div className="px-3 py-2 flex items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-xs font-medium truncate" style={{ color: 'var(--foreground)' }}>{fp.name}</p>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="text-xs font-medium truncate" style={{ color: 'var(--foreground)' }}>{fp.name}</p>
+                      {fp.site && (
+                        <span className="text-xs px-1.5 py-0.5 rounded-full shrink-0" style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--muted)' }}>
+                          {fp.site}
+                        </span>
+                      )}
+                    </div>
                     {fp.url && (
                       <a
                         href={fp.url}
@@ -417,8 +425,15 @@ export default async function PartnerDetailPage({
               <input name="fp_name" required placeholder="fx Forsikring & finansiering — banner" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
             </div>
             <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Rækkefølge</label>
-              <input name="fp_sort_order" type="number" defaultValue={0} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Site</label>
+              <select name="fp_site" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+                <option value="">— Vælg site —</option>
+                <option value="Bilhandel">Bilhandel</option>
+                <option value="TjekBil">TjekBil</option>
+                <option value="TjekBilsyn">TjekBilsyn</option>
+                <option value="Inapp">Inapp</option>
+                <option value="Nyhedsbrev">Nyhedsbrev</option>
+              </select>
             </div>
             <div className="col-span-2">
               <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>URL (linker til)</label>

@@ -50,9 +50,11 @@ export default async function EditPlacementPage({
       }
     }
 
+    const site = (formData.get('site') as string).trim() || null
+
     await supabase
       .from('fixed_placements')
-      .update({ name, url, image_url })
+      .update({ name, url, image_url, site })
       .eq('id', placementId)
 
     redirect(`/admin/partners/${slug}?saved=true`)
@@ -88,6 +90,17 @@ export default async function EditPlacementPage({
                 className="w-full px-3 py-2 rounded-lg text-sm outline-none"
                 style={inputStyle}
               />
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Site</label>
+              <select name="site" defaultValue={placement.site ?? ''} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+                <option value="">— Vælg site —</option>
+                <option value="Bilhandel">Bilhandel</option>
+                <option value="TjekBil">TjekBil</option>
+                <option value="TjekBilsyn">TjekBilsyn</option>
+                <option value="Inapp">Inapp</option>
+                <option value="Nyhedsbrev">Nyhedsbrev</option>
+              </select>
             </div>
             <div>
               <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>URL (linker til)</label>

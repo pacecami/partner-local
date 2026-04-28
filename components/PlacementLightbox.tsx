@@ -7,6 +7,7 @@ type Placement = {
   name: string
   image_url: string | null
   url: string | null
+  site: string | null
 }
 
 export default function PlacementLightbox({ placements }: { placements: Placement[] }) {
@@ -55,14 +56,24 @@ export default function PlacementLightbox({ placements }: { placements: Placemen
                 Billede mangler
               </div>
             )}
-            <div className="px-4 py-3">
-              <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>{fp.name}</p>
+            <div className="px-4 py-3 space-y-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>{fp.name}</p>
+                {fp.site && (
+                  <span
+                    className="text-xs px-2 py-0.5 rounded-full shrink-0"
+                    style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--muted)' }}
+                  >
+                    {fp.site}
+                  </span>
+                )}
+              </div>
               {fp.url && (
                 <a
                   href={fp.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs mt-0.5 block truncate"
+                  className="text-xs block truncate"
                   style={{ color: 'var(--accent)' }}
                   title={fp.url}
                 >
@@ -129,34 +140,45 @@ export default function PlacementLightbox({ placements }: { placements: Placemen
             }}
           />
 
-          <p
-            style={{
-              marginTop: '16px',
-              color: '#fff',
-              fontSize: '14px',
-              fontWeight: 500,
-              opacity: 0.85,
-            }}
-          >
-            {open.name}
-          </p>
-          {open.url && (
-            <a
-              href={open.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={e => e.stopPropagation()}
-              style={{
-                marginTop: '6px',
-                color: 'var(--accent)',
-                fontSize: '12px',
-                opacity: 0.9,
-                textDecoration: 'underline',
-              }}
-            >
-              {open.url}
-            </a>
-          )}
+          <div style={{ marginTop: '16px', textAlign: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+              <p style={{ color: '#fff', fontSize: '14px', fontWeight: 500, opacity: 0.85 }}>
+                {open.name}
+              </p>
+              {open.site && (
+                <span
+                  style={{
+                    fontSize: '11px',
+                    padding: '2px 8px',
+                    borderRadius: '999px',
+                    background: 'rgba(255,255,255,0.15)',
+                    color: '#fff',
+                    opacity: 0.8,
+                  }}
+                >
+                  {open.site}
+                </span>
+              )}
+            </div>
+            {open.url && (
+              <a
+                href={open.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={e => e.stopPropagation()}
+                style={{
+                  display: 'block',
+                  marginTop: '6px',
+                  color: 'var(--accent)',
+                  fontSize: '12px',
+                  opacity: 0.9,
+                  textDecoration: 'underline',
+                }}
+              >
+                {open.url}
+              </a>
+            )}
+          </div>
         </div>
       )}
     </>
