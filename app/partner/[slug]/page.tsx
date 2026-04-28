@@ -90,6 +90,15 @@ export default async function PartnerDashboardPage({
     })
   )
 
+  const { data: subscriptionPeriods } = await supabase
+    .from('subscription_periods')
+    .select('*')
+    .eq('partner_id', partner.id)
+    .order('start_date', { ascending: false })
+
+  // Brug seneste periode som aktiv abonnementsdata (fald tilbage til partner-felterne)
+  const activePeriod = subscriptionPeriods?.[0] ?? null
+
   const { data: campaigns } = await supabase
     .from('campaigns')
     .select('*')
@@ -105,12 +114,18 @@ export default async function PartnerDashboardPage({
   const activeCampaigns = (campaigns ?? []).filter(c => c.status === 'active')
   const campaignBudget = (campaigns ?? []).reduce((sum, c) => sum + (c.monthly_budget ?? 0), 0)
 
-  const subStart = partner.subscription_start ? new Date(partner.subscription_start) : null
-  const subEnd = partner.subscription_end ? new Date(partner.subscription_end) : null
+  // Abonnement — brug aktivePeriode hvis den findes, ellers partner-felter som fallback
+  const subStart = activePeriod
+    ? new Date(activePeriod.start_date)
+    : partner.subscription_start ? new Date(partner.subscription_start) : null
+  const subEnd = activePeriod
+    ? new Date(activePeriod.end_date)
+    : partner.subscription_end ? new Date(partner.subscription_end) : null
+  const subBudget = activePeriod ? activePeriod.budget : partner.subscription_budget
   let subMonthly: number | null = null
-  if (subStart && subEnd && partner.subscription_budget) {
+  if (subStart && subEnd && subBudget) {
     const months = (subEnd.getFullYear() - subStart.getFullYear()) * 12 + (subEnd.getMonth() - subStart.getMonth()) + 1
-    subMonthly = months > 0 ? Math.round(partner.subscription_budget / months) : null
+    subMonthly = months > 0 ? Math.round(subBudget / months) : null
   }
 
   const totalMonthly = (subMonthly ?? 0) + campaignBudget
@@ -200,7 +215,7 @@ export default async function PartnerDashboardPage({
         </div>
 
         {/* Subscription */}
-        {(subStart || subEnd || partner.subscription_budget) && (
+        {(subStart || subEnd || subBudget) && (
           <section
             className="rounded-xl p-5"
             style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
@@ -222,7 +237,7 @@ export default async function PartnerDashboardPage({
               <div>
                 <p className="text-xs mb-1" style={{ color: 'var(--muted)' }}>Samlet budget (ex. moms)</p>
                 <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>
-                  {partner.subscription_budget ? `${partner.subscription_budget.toLocaleString('da-DK')} kr` : '—'}
+                  {subBudget ? `${(subBudget as number).toLocaleString('da-DK')} kr` : '—'}
                 </p>
               </div>
               <div>

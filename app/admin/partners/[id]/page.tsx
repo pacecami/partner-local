@@ -108,6 +108,18 @@ export default async function PartnerDetailPage({
     .eq('partner_id', partner.id)
     .order('sort_order', { ascending: true })
 
+  const { data: subscriptionPeriods } = await supabase
+    .from('subscription_periods')
+    .select('*')
+    .eq('partner_id', partner.id)
+    .order('start_date', { ascending: false })
+
+  // Vis "Tilføj ny periode"-knap når der er ≤ 2 måneder til udløb
+  const latestPeriod = subscriptionPeriods?.[0] ?? null
+  const twoMonthsFromNow = new Date()
+  twoMonthsFromNow.setMonth(twoMonthsFromNow.getMonth() + 2)
+  const showAddPeriod = !latestPeriod || new Date(latestPeriod.end_date) <= twoMonthsFromNow
+
   // Pacenami banner-statistik
   const bannerCampaigns = (campaigns ?? []).filter(c =>
     c.pacenami_campaign_id && (c.placements ?? []).includes('Banner')
@@ -157,6 +169,27 @@ export default async function PartnerDetailPage({
       })
       .eq('id', partner.id)
     redirect(`/admin/partners/${slug}?saved=true`)
+  }
+
+  async function addSubscriptionPeriod(formData: FormData) {
+    'use server'
+    const supabase = await createClient()
+    const start_date = formData.get('sp_start') as string
+    const end_date = formData.get('sp_end') as string
+    const budgetRaw = (formData.get('sp_budget') as string).replace(/\./g, '').replace(/,/g, '.').trim()
+    const budget = budgetRaw ? Number(budgetRaw) : null
+    await supabase.from('subscription_periods').insert({ partner_id: partner.id, start_date, end_date, budget })
+    // Synkronisér også partner-felterne, så dashboardet viser den nye periode
+    await supabase.from('partners').update({ subscription_start: start_date, subscription_end: end_date, subscription_budget: budget }).eq('id', partner.id)
+    redirect(`/admin/partners/${slug}?saved=true`)
+  }
+
+  async function deleteSubscriptionPeriod(formData: FormData) {
+    'use server'
+    const supabase = await createClient()
+    const periodId = formData.get('period_id') as string
+    await supabase.from('subscription_periods').delete().eq('id', periodId)
+    redirect(`/admin/partners/${slug}`)
   }
 
   async function updateEvents(formData: FormData) {
@@ -299,60 +332,96 @@ export default async function PartnerDetailPage({
         </a>
       </div>
 
-      {/* Subscription box */}
-      <section className="rounded-xl p-5" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-        <h2 className="font-semibold text-sm mb-4" style={{ color: 'var(--foreground)' }}>Abonnement</h2>
-        {partner.subscription_start || partner.subscription_end || partner.subscription_budget ? (() => {
-          const start = partner.subscription_start ? new Date(partner.subscription_start) : null
-          const end = partner.subscription_end ? new Date(partner.subscription_end) : null
-          let monthlyCalc: number | null = null
-          if (start && end && partner.subscription_budget) {
-            const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1
-            monthlyCalc = months > 0 ? Math.round(partner.subscription_budget / months) : null
-          }
-          const campaignExtra = (campaigns ?? []).reduce((sum, c) => sum + (c.monthly_budget ?? 0), 0)
-          const totalMonthly = (monthlyCalc ?? 0) + campaignExtra
-          return (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
-              <div>
-                <p className="text-xs mb-1" style={{ color: 'var(--muted)' }}>Startdato</p>
-                <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>
-                  {start ? start.toLocaleDateString('da-DK') : '—'}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs mb-1" style={{ color: 'var(--muted)' }}>Slutdato</p>
-                <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>
-                  {end ? end.toLocaleDateString('da-DK') : '—'}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs mb-1" style={{ color: 'var(--muted)' }}>Samlet budget (ex. moms)</p>
-                <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>
-                  {partner.subscription_budget ? `${partner.subscription_budget.toLocaleString('da-DK')} kr` : '—'}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs mb-1" style={{ color: 'var(--muted)' }}>Abonnement/md</p>
-                <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>
-                  {monthlyCalc ? `${monthlyCalc.toLocaleString('da-DK')} kr` : '—'}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs mb-1" style={{ color: 'var(--muted)' }}>Samlet/md (ex. moms)</p>
-                <p className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
-                  {totalMonthly > 0 ? `${totalMonthly.toLocaleString('da-DK')} kr` : '—'}
-                </p>
-                {(campaigns ?? []).filter(c => c.monthly_budget).map(c => (
-                  <p key={c.id} className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
-                    inkl. {(c.monthly_budget as number).toLocaleString('da-DK')} kr i {(c.placements ?? []).join(', ') || c.name}
-                  </p>
+      {/* Abonnementsperioder */}
+      <section className="rounded-xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+        <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
+          <h2 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>Abonnementsperioder</h2>
+        </div>
+
+        {/* Periodeoversigt */}
+        {subscriptionPeriods && subscriptionPeriods.length > 0 ? (
+          <table className="w-full">
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                {['Startdato', 'Slutdato', 'Samlet budget', 'Budget/md', ''].map(h => (
+                  <th key={h} className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>{h}</th>
                 ))}
+              </tr>
+            </thead>
+            <tbody>
+              {subscriptionPeriods.map((sp, i) => {
+                const start = new Date(sp.start_date)
+                const end = new Date(sp.end_date)
+                const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1
+                const monthly = sp.budget && months > 0 ? Math.round(sp.budget / months) : null
+                const isExpiringSoon = new Date(sp.end_date) <= twoMonthsFromNow && new Date(sp.end_date) >= new Date()
+                const isExpired = new Date(sp.end_date) < new Date()
+                return (
+                  <tr key={sp.id} style={{ borderBottom: i < subscriptionPeriods.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                    <td className="px-5 py-3 text-sm" style={{ color: 'var(--foreground)' }}>
+                      {start.toLocaleDateString('da-DK')}
+                    </td>
+                    <td className="px-5 py-3 text-sm" style={{ color: isExpiringSoon ? '#f59e0b' : isExpired ? 'var(--muted)' : 'var(--foreground)' }}>
+                      {end.toLocaleDateString('da-DK')}
+                      {isExpiringSoon && <span className="ml-2 text-xs">⚠ Udløber snart</span>}
+                    </td>
+                    <td className="px-5 py-3 text-sm" style={{ color: 'var(--foreground)' }}>
+                      {sp.budget ? `${(sp.budget as number).toLocaleString('da-DK')} kr` : '—'}
+                    </td>
+                    <td className="px-5 py-3 text-sm font-semibold" style={{ color: 'var(--accent)' }}>
+                      {monthly ? `${monthly.toLocaleString('da-DK')} kr` : '—'}
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      <form action={deleteSubscriptionPeriod}>
+                        <input type="hidden" name="period_id" value={sp.id} />
+                        <button type="submit" className="text-xs px-2 py-1 rounded" style={{ color: '#ef4444', background: 'transparent' }}>Slet</button>
+                      </form>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        ) : (
+          <p className="px-6 py-5 text-sm" style={{ color: 'var(--muted)' }}>Ingen perioder endnu.</p>
+        )}
+
+        {/* Tilføj ny periode — vises kun når ≤ 2 måneder til udløb */}
+        {showAddPeriod && (
+          <div className="border-t" style={{ borderColor: 'var(--border)' }}>
+            {latestPeriod && (
+              <div className="px-6 pt-4 flex items-center gap-2">
+                <span style={{ color: '#f59e0b', fontSize: '13px' }}>⚠</span>
+                <p className="text-xs" style={{ color: '#f59e0b' }}>
+                  Nuværende periode udløber {new Date(latestPeriod.end_date).toLocaleDateString('da-DK')} — tilføj en ny herunder.
+                </p>
               </div>
-            </div>
-          )
-        })() : (
-          <p className="text-sm" style={{ color: 'var(--muted)' }}>Ingen abonnementsdata — udfyld felterne under Partnerinfo.</p>
+            )}
+            <form action={addSubscriptionPeriod} className="p-6 space-y-4">
+              <p className="text-xs font-semibold" style={{ color: 'var(--muted)' }}>
+                {latestPeriod ? 'Tilføj ny abonnementsperiode' : 'Opret første abonnementsperiode'}
+              </p>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Startdato *</label>
+                  <input name="sp_start" type="date" required className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Slutdato *</label>
+                  <input name="sp_end" type="date" required className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Samlet budget (kr, ex. moms)</label>
+                  <input name="sp_budget" type="text" inputMode="numeric" placeholder="120.000" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+                </div>
+              </div>
+              <div className="flex justify-end">
+                <button type="submit" className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: 'var(--accent)', color: '#000' }}>
+                  + Tilføj periode
+                </button>
+              </div>
+            </form>
+          </div>
         )}
       </section>
 
