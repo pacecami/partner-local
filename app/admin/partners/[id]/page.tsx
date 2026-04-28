@@ -383,7 +383,18 @@ export default async function PartnerDetailPage({
             </tbody>
           </table>
         ) : (
-          <p className="px-6 py-5 text-sm" style={{ color: 'var(--muted)' }}>Ingen perioder endnu.</p>
+          /* Ingen perioder i tabellen — vis eksisterende partner-data som præ-udfyldt import */
+          partner.subscription_start || partner.subscription_end ? (
+            <div className="px-6 py-4 flex items-start gap-3" style={{ background: 'rgba(245,158,11,0.08)', borderBottom: '1px solid var(--border)' }}>
+              <span style={{ color: '#f59e0b', fontSize: '15px', marginTop: '1px' }}>⚠</span>
+              <p className="text-xs leading-relaxed" style={{ color: '#f59e0b' }}>
+                Der er abonnementsdata i Partnerinfo, som endnu ikke er registreret som en periode.
+                Klik "+ Tilføj periode" herunder for at importere den.
+              </p>
+            </div>
+          ) : (
+            <p className="px-6 py-5 text-sm" style={{ color: 'var(--muted)' }}>Ingen perioder endnu.</p>
+          )
         )}
 
         {/* Tilføj ny periode — vises kun når ≤ 2 måneder til udløb */}
@@ -404,15 +415,28 @@ export default async function PartnerDetailPage({
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Startdato *</label>
-                  <input name="sp_start" type="date" required className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+                  <input
+                    name="sp_start" type="date" required
+                    defaultValue={!latestPeriod && partner.subscription_start ? partner.subscription_start : ''}
+                    className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Slutdato *</label>
-                  <input name="sp_end" type="date" required className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+                  <input
+                    name="sp_end" type="date" required
+                    defaultValue={!latestPeriod && partner.subscription_end ? partner.subscription_end : ''}
+                    className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Samlet budget (kr, ex. moms)</label>
-                  <input name="sp_budget" type="text" inputMode="numeric" placeholder="120.000" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+                  <input
+                    name="sp_budget" type="text" inputMode="numeric"
+                    defaultValue={!latestPeriod && partner.subscription_budget ? partner.subscription_budget.toLocaleString('da-DK') : ''}
+                    placeholder="120.000"
+                    className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}
+                  />
                 </div>
               </div>
               <div className="flex justify-end">
