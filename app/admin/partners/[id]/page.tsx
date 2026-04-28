@@ -354,6 +354,59 @@ export default async function PartnerDetailPage({
         )}
       </section>
 
+      {/* Faste placeringer */}
+      <section className="rounded-xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+        <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
+          <h2 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>
+            Faste placeringer ({fixedPlacements?.length ?? 0})
+          </h2>
+        </div>
+
+        {/* Eksisterende */}
+        {fixedPlacements && fixedPlacements.length > 0 && (
+          <div className="p-6 grid grid-cols-2 gap-4 sm:grid-cols-3 border-b" style={{ borderColor: 'var(--border)' }}>
+            {fixedPlacements.map(fp => (
+              <div key={fp.id} className="rounded-xl overflow-hidden" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+                {fp.image_url ? (
+                  <img src={fp.image_url} alt={fp.name} className="w-full object-cover" style={{ maxHeight: '140px' }} />
+                ) : (
+                  <div className="w-full flex items-center justify-center text-xs" style={{ height: '100px', color: 'var(--muted)' }}>Intet billede</div>
+                )}
+                <div className="px-3 py-2 flex items-center justify-between">
+                  <span className="text-xs font-medium" style={{ color: 'var(--foreground)' }}>{fp.name}</span>
+                  <form action={deleteFixedPlacement}>
+                    <input type="hidden" name="fp_id" value={fp.id} />
+                    <button type="submit" className="text-xs px-2 py-1 rounded" style={{ color: '#ef4444', background: 'transparent' }}>Slet</button>
+                  </form>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Tilføj ny */}
+        <form action={addFixedPlacement} className="p-6 space-y-4" encType="multipart/form-data">
+          <p className="text-xs font-semibold" style={{ color: 'var(--muted)' }}>Tilføj fast placering</p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Navn *</label>
+              <input name="fp_name" required placeholder="fx Forsikring & finansiering — banner" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Rækkefølge</label>
+              <input name="fp_sort_order" type="number" defaultValue={0} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Billede (screenshot af placeringen)</label>
+              <input name="fp_image" type="file" accept="image/*" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <button type="submit" className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: 'var(--accent)', color: '#000' }}>+ Tilføj placering</button>
+          </div>
+        </form>
+      </section>
+
       {/* Campaigns list */}
       <section
         className="rounded-xl overflow-hidden"
@@ -501,59 +554,6 @@ export default async function PartnerDetailPage({
             </tbody>
           </table>
         )}
-      </section>
-
-      {/* Faste placeringer */}
-      <section className="rounded-xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-        <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
-          <h2 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>
-            Faste placeringer ({fixedPlacements?.length ?? 0})
-          </h2>
-        </div>
-
-        {/* Eksisterende */}
-        {fixedPlacements && fixedPlacements.length > 0 && (
-          <div className="p-6 grid grid-cols-2 gap-4 sm:grid-cols-3 border-b" style={{ borderColor: 'var(--border)' }}>
-            {fixedPlacements.map(fp => (
-              <div key={fp.id} className="rounded-xl overflow-hidden" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
-                {fp.image_url ? (
-                  <img src={fp.image_url} alt={fp.name} className="w-full object-cover" style={{ maxHeight: '140px' }} />
-                ) : (
-                  <div className="w-full flex items-center justify-center text-xs" style={{ height: '100px', color: 'var(--muted)' }}>Intet billede</div>
-                )}
-                <div className="px-3 py-2 flex items-center justify-between">
-                  <span className="text-xs font-medium" style={{ color: 'var(--foreground)' }}>{fp.name}</span>
-                  <form action={deleteFixedPlacement}>
-                    <input type="hidden" name="fp_id" value={fp.id} />
-                    <button type="submit" className="text-xs px-2 py-1 rounded" style={{ color: '#ef4444', background: 'transparent' }}>Slet</button>
-                  </form>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Tilføj ny */}
-        <form action={addFixedPlacement} className="p-6 space-y-4" encType="multipart/form-data">
-          <p className="text-xs font-semibold" style={{ color: 'var(--muted)' }}>Tilføj fast placering</p>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Navn *</label>
-              <input name="fp_name" required placeholder="fx Forsikring & finansiering — banner" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Rækkefølge</label>
-              <input name="fp_sort_order" type="number" defaultValue={0} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
-            </div>
-            <div className="col-span-2">
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Billede (screenshot af placeringen)</label>
-              <input name="fp_image" type="file" accept="image/*" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
-            </div>
-          </div>
-          <div className="flex justify-end">
-            <button type="submit" className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: 'var(--accent)', color: '#000' }}>+ Tilføj placering</button>
-          </div>
-        </form>
       </section>
 
       {/* Add campaign */}

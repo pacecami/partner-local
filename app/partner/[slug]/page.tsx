@@ -235,6 +235,16 @@ export default async function PartnerDashboardPage({
           </section>
         )}
 
+        {/* Faste placeringer */}
+        {fixedPlacements && fixedPlacements.length > 0 && (
+          <section className="space-y-4">
+            <h2 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>
+              Faste placeringer
+            </h2>
+            <PlacementLightbox placements={fixedPlacements} />
+          </section>
+        )}
+
         {/* Campaigns */}
         <section
           className="rounded-xl overflow-hidden"
@@ -397,16 +407,6 @@ export default async function PartnerDashboardPage({
             </table>
           )}
         </section>
-
-        {/* Faste placeringer */}
-        {fixedPlacements && fixedPlacements.length > 0 && (
-          <section className="space-y-4">
-            <h2 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>
-              Faste placeringer
-            </h2>
-            <PlacementLightbox placements={fixedPlacements} />
-          </section>
-        )}
 
         {/* GA4 stats */}
         {ga4Properties.length > 0 && (
