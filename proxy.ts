@@ -9,36 +9,35 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
-  let response = NextResponse.next({ request })
+  // Tjek admin_token cookie
+  const adminToken = request.cookies.get('admin_token')?.value
+  if (!adminToken) {
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
 
+  // Valider token mod databasen
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          )
-          response = NextResponse.next({ request })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
-          )
-        },
+        getAll() { return request.cookies.getAll() },
+        setAll() {},
       },
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data } = await supabase
+    .from('admin_tokens')
+    .select('id')
+    .eq('token', adminToken)
+    .single()
 
-  if (!user) {
+  if (!data) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  return response
+  return NextResponse.next()
 }
 
 export const config = {
