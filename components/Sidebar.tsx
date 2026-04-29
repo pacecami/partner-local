@@ -105,31 +105,6 @@ export default function Sidebar({ role, partnerName, partners = [] }: SidebarPro
               Overblikket
             </Link>
 
-            {/* Indstillinger */}
-            <Link
-              href="/admin/indstillinger"
-              className="flex items-center gap-2.5 px-3 py-2 mt-0.5 rounded-lg text-sm font-medium transition-colors"
-              style={{
-                background: pathname.startsWith('/admin/indstillinger') ? 'var(--surface-2)' : 'transparent',
-                color: pathname.startsWith('/admin/indstillinger') ? 'var(--foreground)' : 'var(--muted)',
-              }}
-            >
-              <span className="text-xs">⚙️</span>
-              Indstillinger
-            </Link>
-
-            {/* Brugere */}
-            <Link
-              href="/admin/brugere"
-              className="flex items-center gap-2.5 px-3 py-2 mt-0.5 rounded-lg text-sm font-medium transition-colors"
-              style={{
-                background: pathname === '/admin/brugere' ? 'var(--surface-2)' : 'transparent',
-                color: pathname === '/admin/brugere' ? 'var(--foreground)' : 'var(--muted)',
-              }}
-            >
-              <span className="text-xs">👤</span>
-              Brugere
-            </Link>
           </>
         ) : (
           <Link
@@ -146,6 +121,33 @@ export default function Sidebar({ role, partnerName, partners = [] }: SidebarPro
         )}
       </nav>
 
+      {/* Brugere + Indstillinger — fast nederst */}
+      {role === 'admin' && (
+        <div className="px-3 py-3 border-t space-y-0.5" style={{ borderColor: 'var(--border)' }}>
+          <Link
+            href="/admin/brugere"
+            className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+            style={{
+              background: pathname === '/admin/brugere' ? 'var(--surface-2)' : 'transparent',
+              color: pathname === '/admin/brugere' ? 'var(--foreground)' : 'var(--muted)',
+            }}
+          >
+            <span className="text-xs">👤</span>
+            Brugere
+          </Link>
+          <Link
+            href="/admin/indstillinger"
+            className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+            style={{
+              background: pathname.startsWith('/admin/indstillinger') ? 'var(--surface-2)' : 'transparent',
+              color: pathname.startsWith('/admin/indstillinger') ? 'var(--foreground)' : 'var(--muted)',
+            }}
+          >
+            <span className="text-xs">⚙️</span>
+            Indstillinger
+          </Link>
+        </div>
+      )}
     </aside>
   )
 }
