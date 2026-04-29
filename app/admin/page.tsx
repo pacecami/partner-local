@@ -101,7 +101,7 @@ export default async function AdminPage() {
           <table className="w-full">
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                {['Partner', 'Kampagner', 'Aktive', 'Budget/md', ''].map(h => (
+                {['Partner', 'Aktive', 'Budget/md', ''].map(h => (
                   <th key={h} className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>
                     {h}
                   </th>
@@ -132,7 +132,6 @@ export default async function AdminPage() {
                     <td className="px-6 py-4">
                       <span className="font-medium text-sm" style={{ color: 'var(--foreground)' }}>{p.name}</span>
                     </td>
-                    <td className="px-6 py-4 text-sm" style={{ color: 'var(--muted)' }}>{p.campaigns.length}</td>
                     <td className="px-6 py-4 text-sm" style={{ color: 'var(--green)' }}>{activeCount}</td>
                     <td className="px-6 py-4 text-sm" style={{ color: 'var(--foreground)' }}>
                       {budget > 0 ? `${budget.toLocaleString('da-DK')} kr` : '—'}
