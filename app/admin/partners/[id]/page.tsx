@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { fetchGA4Events, type GA4EventResult } from '@/lib/ga4'
 import { fetchPacenamiStats, type PacenamiStats } from '@/lib/pacenami'
 import { GA4_PROPS } from '@/app/admin/indstillinger/page'
+import CopyLinkBox from '@/components/CopyLinkBox'
 
 export const dynamic = 'force-dynamic'
 
@@ -331,6 +332,9 @@ export default async function PartnerDetailPage({
           Se partnerdashboard →
         </a>
       </div>
+
+      {/* Partner-link */}
+      <CopyLinkBox url={`${process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000'}/p/${partner.access_token}`} />
 
       {/* Abonnementsperioder */}
       <section className="rounded-xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>

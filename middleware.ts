@@ -8,6 +8,7 @@ export async function middleware(request: NextRequest) {
   if (
     pathname.startsWith('/login') ||
     pathname.startsWith('/auth') ||
+    pathname.startsWith('/p/') ||
     pathname.startsWith('/_next') ||
     pathname === '/favicon.ico'
   ) {
