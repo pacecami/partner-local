@@ -105,6 +105,19 @@ export default function Sidebar({ role, partnerName, partners = [] }: SidebarPro
               Overblikket
             </Link>
 
+            {/* Opgaver */}
+            <Link
+              href="/admin/opgaver"
+              className="flex items-center gap-2.5 px-3 py-2 mt-0.5 rounded-lg text-sm font-medium transition-colors"
+              style={{
+                background: pathname.startsWith('/admin/opgaver') ? 'var(--surface-2)' : 'transparent',
+                color: pathname.startsWith('/admin/opgaver') ? 'var(--foreground)' : 'var(--muted)',
+              }}
+            >
+              <span className="text-xs">✱</span>
+              Opgaver
+            </Link>
+
           </>
         ) : (
           <Link
