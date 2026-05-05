@@ -534,7 +534,7 @@ export default async function PartnerDashboardPage({
               return (
                 <div
                   className="rounded-xl p-5"
-                  style={{ background: 'var(--surface)', border: '1px solid var(--accent)', borderOpacity: 0.4 }}
+                  style={{ background: 'var(--surface)', border: '1px solid rgba(200,168,0,0.4)' }}
                 >
                   <p className="text-xs font-semibold mb-4" style={{ color: 'var(--accent)' }}>
                     I alt
