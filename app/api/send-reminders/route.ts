@@ -77,7 +77,7 @@ export async function GET(request: Request) {
   const results = []
 
   for (const c of campaigns) {
-    const partner = c.partners as { name: string; slug: string }
+    const partner = (Array.isArray(c.partners) ? c.partners[0] : c.partners) as { name: string; slug: string }
     const emailPlacements = (c.placements ?? []).filter((p: string) =>
       ['Nyhedsbreve', 'Tilbudsmail'].includes(p),
     )
