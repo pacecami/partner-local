@@ -53,6 +53,7 @@ export default async function EditCampaignPage({
     const pacenamiRaw = (formData.get('pacenami_campaign_id') as string || '').trim()
     const pacenami_campaign_id = pacenamiRaw || null
     const pacenami_report_url = (formData.get('pacenami_report_url') as string || '').trim() || null
+    const subject_pending = formData.get('subject_pending') === 'on'
 
     const graphicFile = formData.get('graphic') as File | null
     let graphic_url = campaign.graphic_url
@@ -72,7 +73,7 @@ export default async function EditCampaignPage({
 
     await supabase
       .from('campaigns')
-      .update({ name, status, start_date, end_date, monthly_budget, placements, graphic_url, impressions, clicks, emails_sent, emails_opened, clicks_to_advertiser, pacenami_campaign_id, pacenami_report_url })
+      .update({ name, status, start_date, end_date, monthly_budget, placements, graphic_url, impressions, clicks, emails_sent, emails_opened, clicks_to_advertiser, pacenami_campaign_id, pacenami_report_url, subject_pending })
       .eq('id', campaignId)
 
     redirect(`/admin/partners/${slug}?saved=true`)
@@ -175,6 +176,12 @@ export default async function EditCampaignPage({
                   </label>
                 ))}
               </div>
+            </div>
+            <div className="col-span-2">
+              <label className="flex items-center gap-2 cursor-pointer text-sm" style={{ color: 'var(--foreground)' }}>
+                <input type="checkbox" name="subject_pending" defaultChecked={campaign.subject_pending ?? false} className="accent-yellow-400 w-4 h-4" />
+                <span>Emne ikke fastlagt endnu <span className="text-red-500 font-bold">✱</span></span>
+              </label>
             </div>
             <div className="col-span-2 pt-3 border-t" style={{ borderColor: 'var(--border)' }}>
               <p className="text-xs font-semibold mb-3" style={{ color: 'var(--muted)' }}>

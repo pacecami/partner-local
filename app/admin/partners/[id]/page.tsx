@@ -260,6 +260,7 @@ export default async function PartnerDetailPage({
       monthly_budget,
       placements,
       graphic_url,
+      subject_pending: formData.get('subject_pending') === 'on',
     })
     redirect(`/admin/partners/${slug}?saved=true`)
   }
@@ -591,6 +592,7 @@ export default async function PartnerDetailPage({
                       </td>
                       <td className="px-4 py-4">
                         <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>{c.name}</span>
+                        {c.subject_pending && <span className="ml-1.5 text-red-500 font-bold text-sm">✱</span>}
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex flex-wrap gap-1">
@@ -737,6 +739,12 @@ export default async function PartnerDetailPage({
                   </label>
                 ))}
               </div>
+            </div>
+            <div className="col-span-2">
+              <label className="flex items-center gap-2 cursor-pointer text-sm" style={{ color: 'var(--foreground)' }}>
+                <input type="checkbox" name="subject_pending" className="accent-yellow-400 w-4 h-4" />
+                <span>Emne ikke fastlagt endnu <span className="text-red-500 font-bold">✱</span></span>
+              </label>
             </div>
           </div>
           <div className="flex justify-end">
