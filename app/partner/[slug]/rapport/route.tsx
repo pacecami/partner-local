@@ -479,7 +479,7 @@ export async function GET(
                 { label: 'Impressions',         value: fmtNum(pacenamiTotal.impressions) },
                 { label: 'Viewable Impressions',value: fmtNum(pacenamiTotal.viewable_impressions) },
               ].map(({ label, value }) => (
-                <View key={label} style={{ flex: 1, ...s.subCell }}>
+                <View key={label} style={{ ...s.subCell, flex: 1 }}>
                   <Text style={s.subLabel}>{label}</Text>
                   <Text style={s.subValue}>{value}</Text>
                 </View>
@@ -491,7 +491,7 @@ export async function GET(
                 { label: 'Kliks',        value: fmtNum(pacenamiTotal.clicks),               accent: false },
                 { label: 'CTR',          value: `${pacenamiTotal.ctr.toFixed(2)}%`,         accent: true },
               ].map(({ label, value, accent }) => (
-                <View key={label} style={{ flex: 1, ...s.subCell }}>
+                <View key={label} style={{ ...s.subCell, flex: 1 }}>
                   <Text style={s.subLabel}>{label}</Text>
                   <Text style={accent ? { ...s.subValue, color: ACCENT } : s.subValue}>{value}</Text>
                 </View>
@@ -512,7 +512,7 @@ export async function GET(
     </Document>
   )
 
-  return new NextResponse(pdf, {
+  return new NextResponse(new Uint8Array(pdf), {
     headers: {
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="rapport-${slug}-${selectedMonth}.pdf"`,
