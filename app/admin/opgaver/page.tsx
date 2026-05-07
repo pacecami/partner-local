@@ -15,7 +15,7 @@ export default async function OpgaverPage() {
     <div className="max-w-3xl mx-auto">
       <div className="mb-8">
         <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>
-          Opgaver <span className="text-red-500">✱</span>
+          Opgaver
         </h1>
         <p className="text-sm mt-0.5" style={{ color: 'var(--muted)' }}>
           Kampagner hvor emnet endnu ikke er fastlagt
@@ -49,7 +49,7 @@ export default async function OpgaverPage() {
                       {partner?.name ?? '—'}
                     </td>
                     <td className="px-5 py-4 text-sm" style={{ color: 'var(--foreground)' }}>
-                      {c.name} <span className="text-red-500 font-bold">✱</span>
+                      {c.name}
                     </td>
                     <td className="px-5 py-4 text-sm" style={{ color: 'var(--muted)' }}>
                       {c.start_date ? new Date(c.start_date + 'T00:00:00').toLocaleDateString('da-DK', { month: 'long', year: 'numeric' }) : '—'}
