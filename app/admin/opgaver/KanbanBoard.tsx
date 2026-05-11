@@ -9,6 +9,7 @@ export type KanbanCampaign = {
   placements: string[] | null
   material_received: boolean
   task_status: 'todo' | 'in_progress' | 'done'
+  task_note: string | null
   partners: { name: string; slug: string } | null
 }
 
@@ -29,19 +30,32 @@ async function patchCampaign(id: string, updates: Record<string, unknown>) {
 function Card({
   c,
   onMaterialToggle,
+  onNoteChange,
 }: {
   c: KanbanCampaign
   onMaterialToggle: (id: string, current: boolean) => void
+  onNoteChange: (id: string, note: string) => void
 }) {
+  const [note, setNote] = useState(c.task_note ?? '')
+  const [saving, setSaving] = useState(false)
+  const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function handleNoteChange(val: string) {
+    setNote(val)
+    if (saveTimeout.current) clearTimeout(saveTimeout.current)
+    setSaving(true)
+    saveTimeout.current = setTimeout(async () => {
+      await onNoteChange(c.id, val)
+      setSaving(false)
+    }, 800)
+  }
+
   return (
     <div
-      draggable
-      onDragStart={e => e.dataTransfer.setData('text/plain', c.id)}
-      className="rounded-xl p-3.5 space-y-2.5 select-none"
+      className="rounded-xl p-3.5 space-y-2.5"
       style={{
         background: 'var(--surface)',
         border: '1px solid var(--border)',
-        cursor: 'grab',
       }}
     >
       {/* Partner badge */}
@@ -84,9 +98,28 @@ function Card({
         </div>
       )}
 
+      {/* Note field */}
+      <div>
+        <textarea
+          value={note}
+          onChange={e => handleNoteChange(e.target.value)}
+          placeholder="Tilføj en note..."
+          rows={2}
+          className="w-full text-xs px-2.5 py-2 rounded-lg outline-none resize-none"
+          style={{
+            background: 'var(--surface-2)',
+            border: '1px solid var(--border)',
+            color: 'var(--foreground)',
+          }}
+        />
+        {saving && (
+          <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>Gemmer...</p>
+        )}
+      </div>
+
       {/* Bottom row */}
       <div
-        className="flex items-center justify-between pt-2"
+        className="flex items-center justify-between pt-1"
         style={{ borderTop: '1px solid var(--border)' }}
       >
         <button
@@ -157,6 +190,10 @@ export default function KanbanBoard({ campaigns: initial }: { campaigns: KanbanC
     await patchCampaign(id, { material_received: !current })
   }
 
+  async function handleNoteChange(id: string, note: string) {
+    await patchCampaign(id, { task_note: note })
+  }
+
   const total = campaigns.length
   const doneCount = campaigns.filter(c => c.task_status === 'done').length
 
@@ -221,8 +258,9 @@ export default function KanbanBoard({ campaigns: initial }: { campaigns: KanbanC
                     key={c.id}
                     draggable
                     onDragStart={e => handleDragStart(e, c.id)}
+                    style={{ cursor: 'grab' }}
                   >
-                    <Card c={c} onMaterialToggle={handleMaterialToggle} />
+                    <Card c={c} onMaterialToggle={handleMaterialToggle} onNoteChange={handleNoteChange} />
                   </div>
                 ))}
 
