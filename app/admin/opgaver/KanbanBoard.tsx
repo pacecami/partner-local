@@ -56,7 +56,7 @@ function Card({
 
       {/* Campaign name */}
       <p className="text-sm font-semibold leading-snug" style={{ color: 'var(--foreground)' }}>
-        {c.name} <span className="text-red-500">✱</span>
+        {c.name}
       </p>
 
       {/* Start date */}
