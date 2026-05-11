@@ -16,6 +16,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="da" className="h-full" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem('theme');if(t==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}`,
+          }}
+        />
+      </head>
       <body className={`${inter.className} min-h-full`}>{children}</body>
     </html>
   );

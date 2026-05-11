@@ -13,6 +13,19 @@
   --red: #ef4444;
 }
 
+[data-theme="light"] {
+  --background: #f4f4f4;
+  --surface: #ffffff;
+  --surface-2: #ebebeb;
+  --border: #d8d8d8;
+  --foreground: #111111;
+  --muted: #6b7280;
+  --accent: #d4aa00;
+  --accent-hover: #b89600;
+  --green: #16a34a;
+  --red: #dc2626;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

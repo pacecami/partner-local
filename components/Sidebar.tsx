@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
+import ThemeToggle from './ThemeToggle'
 
 interface Partner {
   id: string
@@ -134,33 +135,36 @@ export default function Sidebar({ role, partnerName, partners = [] }: SidebarPro
         )}
       </nav>
 
-      {/* Brugere + Indstillinger — fast nederst */}
-      {role === 'admin' && (
-        <div className="px-3 py-3 border-t space-y-0.5" style={{ borderColor: 'var(--border)' }}>
-          <Link
-            href="/admin/brugere"
-            className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-            style={{
-              background: pathname === '/admin/brugere' ? 'var(--surface-2)' : 'transparent',
-              color: pathname === '/admin/brugere' ? 'var(--foreground)' : 'var(--muted)',
-            }}
-          >
-            <span className="text-xs">👤</span>
-            Brugere
-          </Link>
-          <Link
-            href="/admin/indstillinger"
-            className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-            style={{
-              background: pathname.startsWith('/admin/indstillinger') ? 'var(--surface-2)' : 'transparent',
-              color: pathname.startsWith('/admin/indstillinger') ? 'var(--foreground)' : 'var(--muted)',
-            }}
-          >
-            <span className="text-xs">⚙️</span>
-            Indstillinger
-          </Link>
-        </div>
-      )}
+      {/* Brugere + Indstillinger + Tema — fast nederst */}
+      <div className="px-3 py-3 border-t space-y-0.5" style={{ borderColor: 'var(--border)' }}>
+        {role === 'admin' && (
+          <>
+            <Link
+              href="/admin/brugere"
+              className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+              style={{
+                background: pathname === '/admin/brugere' ? 'var(--surface-2)' : 'transparent',
+                color: pathname === '/admin/brugere' ? 'var(--foreground)' : 'var(--muted)',
+              }}
+            >
+              <span className="text-xs">👤</span>
+              Brugere
+            </Link>
+            <Link
+              href="/admin/indstillinger"
+              className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+              style={{
+                background: pathname.startsWith('/admin/indstillinger') ? 'var(--surface-2)' : 'transparent',
+                color: pathname.startsWith('/admin/indstillinger') ? 'var(--foreground)' : 'var(--muted)',
+              }}
+            >
+              <span className="text-xs">⚙️</span>
+              Indstillinger
+            </Link>
+          </>
+        )}
+        <ThemeToggle />
+      </div>
     </aside>
   )
 }
