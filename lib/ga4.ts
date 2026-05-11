@@ -1,8 +1,20 @@
 import { BetaAnalyticsDataClient } from '@google-analytics/data'
+import { createClient } from '@supabase/supabase-js'
 
-function getClient() {
-  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON
-  if (!raw) throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON is not set')
+async function getClient() {
+  // Hent Google Service Account JSON fra Supabase settings-tabellen
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+  const { data } = await supabase
+    .from('settings')
+    .select('value')
+    .eq('key', 'google_service_account_json')
+    .single()
+
+  const raw = data?.value ?? process.env.GOOGLE_SERVICE_ACCOUNT_JSON
+  if (!raw) throw new Error('Google Service Account JSON er ikke konfigureret')
   const credentials = JSON.parse(raw)
   return new BetaAnalyticsDataClient({ credentials })
 }
@@ -20,7 +32,7 @@ export async function fetchGA4Events(
 ): Promise<GA4EventResult[]> {
   if (!eventNames.length) return []
 
-  const client = getClient()
+  const client = await getClient()
 
   const [response] = await client.runReport({
     property: `properties/${propertyId}`,

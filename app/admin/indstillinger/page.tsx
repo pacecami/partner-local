@@ -86,6 +86,37 @@ export default async function IndstillingerPage() {
         </form>
       </div>
 
+      {/* Google Service Account */}
+      <div className="rounded-xl overflow-hidden mb-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+        <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
+          <h2 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>Google Service Account</h2>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
+            Indsæt hele indholdet af din Google Service Account JSON-fil her.
+          </p>
+        </div>
+        <form action={async (formData: FormData) => {
+          'use server'
+          const supabase = await createClient()
+          const value = (formData.get('google_service_account_json') as string).trim()
+          await supabase.from('settings').upsert({ key: 'google_service_account_json', value })
+          redirect('/admin/indstillinger?saved=true')
+        }} className="px-6 py-5">
+          <textarea
+            name="google_service_account_json"
+            rows={6}
+            defaultValue={settings['google_service_account_json'] ?? ''}
+            placeholder={'{\n  "type": "service_account",\n  "project_id": "...",\n  ...\n}'}
+            className="w-full px-3 py-2 rounded-lg text-sm outline-none font-mono resize-none"
+            style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
+          />
+          <div className="flex justify-end mt-3">
+            <button type="submit" className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: 'var(--accent)', color: '#000' }}>
+              Gem JSON
+            </button>
+          </div>
+        </form>
+      </div>
+
       {/* E-mail påmindelser */}
       <div className="rounded-xl p-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
         <h2 className="font-semibold text-sm mb-1" style={{ color: 'var(--foreground)' }}>E-mail påmindelser</h2>
