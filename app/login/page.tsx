@@ -151,6 +151,15 @@ export default async function LoginPage({
               Log ind
             </button>
           </form>
+
+          <div style={{ textAlign: 'center', marginTop: '20px' }}>
+            <a
+              href="/login/reset"
+              style={{ fontSize: '13px', color: 'var(--muted)', textDecoration: 'none' }}
+            >
+              Glemt adgangskode?
+            </a>
+          </div>
         </div>
       </div>
     </div>
