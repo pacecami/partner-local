@@ -164,6 +164,14 @@ export default function Sidebar({ role, partnerName, partners = [] }: SidebarPro
           </>
         )}
         <ThemeToggle />
+        <a
+          href="/api/auth/logout"
+          className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+          style={{ color: 'var(--muted)' }}
+        >
+          <span className="text-xs">↩</span>
+          Log ud
+        </a>
       </div>
     </aside>
   )
