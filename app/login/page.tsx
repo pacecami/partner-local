@@ -1,7 +1,6 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
 
 export default async function LoginPage({
   searchParams,
@@ -34,9 +33,8 @@ export default async function LoginPage({
     }
 
     // Opret session-token og gem i admin_tokens
-    const adminClient = createAdminClient()
     const token = crypto.randomUUID()
-    await adminClient.from('admin_tokens').insert({ name: email, token })
+    await supabase.from('admin_tokens').insert({ name: email, token })
 
     // Sæt httpOnly cookie (30 dage)
     const cookieStore = await cookies()
