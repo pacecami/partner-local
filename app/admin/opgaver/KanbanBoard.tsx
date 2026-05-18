@@ -9,7 +9,7 @@ export type KanbanCampaign = {
   start_date: string | null
   placements: string[] | null
   material_received: boolean
-  task_status: 'todo' | 'in_progress' | 'done' | 'sent'
+  task_status: 'todo' | 'in_progress' | 'done' | 'sendt'
   task_note: string | null
   sent_pdf_url: string | null
   partners: { name: string; slug: string } | null
@@ -19,7 +19,7 @@ const COLUMNS = [
   { id: 'todo' as const,        label: 'To do',       dot: '#9ca3af' },
   { id: 'in_progress' as const, label: 'In progress', dot: '#f97316' },
   { id: 'done' as const,        label: 'Done',        dot: '#22c55e' },
-  { id: 'sent' as const,        label: 'Sendt',       dot: '#3b82f6' },
+  { id: 'sendt' as const,       label: 'Sendt',       dot: '#3b82f6' },
 ]
 
 async function patchCampaign(id: string, updates: Record<string, unknown>) {
@@ -149,7 +149,7 @@ function Card({
       </div>
 
       {/* PDF upload — kun på Sendt-kort */}
-      {c.task_status === 'sent' && (
+      {c.task_status === 'sendt' && (
         <div>
           <input
             ref={fileInputRef}
@@ -252,7 +252,7 @@ export default function KanbanBoard({ campaigns: initial }: { campaigns: KanbanC
     setDraggingOver(null)
   }
 
-  async function handleDrop(e: React.DragEvent, targetCol: 'todo' | 'in_progress' | 'done' | 'sent') {
+  async function handleDrop(e: React.DragEvent, targetCol: 'todo' | 'in_progress' | 'done' | 'sendt') {
     e.preventDefault()
     setDraggingOver(null)
     const id = e.dataTransfer.getData('text/plain') || dragId.current
@@ -285,7 +285,7 @@ export default function KanbanBoard({ campaigns: initial }: { campaigns: KanbanC
   }
 
   const total = campaigns.length
-  const doneCount = campaigns.filter(c => c.task_status === 'done' || c.task_status === 'sent').length
+  const doneCount = campaigns.filter(c => c.task_status === 'done' || c.task_status === 'sendt').length
 
   return (
     <div>
