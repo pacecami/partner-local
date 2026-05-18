@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { createClient } from '@/lib/supabase/client'
 
 export type KanbanCampaign = {
   id: string
@@ -10,6 +11,7 @@ export type KanbanCampaign = {
   material_received: boolean
   task_status: 'todo' | 'in_progress' | 'done' | 'sent'
   task_note: string | null
+  sent_pdf_url: string | null
   partners: { name: string; slug: string } | null
 }
 
@@ -32,14 +34,42 @@ function Card({
   c,
   onMaterialToggle,
   onNoteChange,
+  onPdfUploaded,
 }: {
   c: KanbanCampaign
   onMaterialToggle: (id: string, current: boolean) => void
   onNoteChange: (id: string, note: string) => void
+  onPdfUploaded: (id: string, url: string) => void
 }) {
   const [note, setNote] = useState(c.task_note ?? '')
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [pdfUrl, setPdfUrl] = useState(c.sent_pdf_url)
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  async function handlePdfUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    const supabase = createClient()
+    const fileName = `${c.id}/${Date.now()}_${file.name.replace(/\s+/g, '_')}`
+    const { data, error } = await supabase.storage
+      .from('campaign-pdfs')
+      .upload(fileName, file, { upsert: true })
+    if (!error && data) {
+      const { data: urlData } = supabase.storage.from('campaign-pdfs').getPublicUrl(data.path)
+      const url = urlData.publicUrl
+      setPdfUrl(url)
+      onPdfUploaded(c.id, url)
+      await fetch('/api/campaigns/update-task', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: c.id, sent_pdf_url: url }),
+      })
+    }
+    setUploading(false)
+  }
 
   function handleNoteChange(val: string) {
     setNote(val)
@@ -118,6 +148,59 @@ function Card({
         )}
       </div>
 
+      {/* PDF upload — kun på Sendt-kort */}
+      {c.task_status === 'sent' && (
+        <div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/pdf"
+            className="hidden"
+            onChange={handlePdfUpload}
+          />
+          {pdfUrl ? (
+            <div className="flex items-center gap-2">
+              <a
+                href={pdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-xs px-2 py-1 rounded-lg flex-1 truncate"
+                style={{
+                  background: 'rgba(59,130,246,0.12)',
+                  border: '1px solid rgba(59,130,246,0.3)',
+                  color: '#3b82f6',
+                }}
+              >
+                <span>📄</span>
+                <span className="truncate">Åbn PDF</span>
+              </a>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="text-xs px-2 py-1 rounded-lg"
+                style={{ background: 'var(--surface-2)', color: 'var(--muted)', border: '1px solid var(--border)' }}
+                title="Erstat PDF"
+              >
+                ↑
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="w-full text-xs py-1.5 rounded-lg transition-all"
+              style={{
+                border: '1.5px dashed var(--border)',
+                color: uploading ? 'var(--muted)' : '#3b82f6',
+                background: 'transparent',
+                cursor: uploading ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {uploading ? 'Uploader...' : '+ Vedhæft PDF'}
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Bottom row */}
       <div
         className="flex items-center justify-between pt-1"
@@ -195,6 +278,12 @@ export default function KanbanBoard({ campaigns: initial }: { campaigns: KanbanC
     await patchCampaign(id, { task_note: note })
   }
 
+  function handlePdfUploaded(id: string, url: string) {
+    setCampaigns(prev =>
+      prev.map(c => (c.id === id ? { ...c, sent_pdf_url: url } : c))
+    )
+  }
+
   const total = campaigns.length
   const doneCount = campaigns.filter(c => c.task_status === 'done' || c.task_status === 'sent').length
 
@@ -261,7 +350,7 @@ export default function KanbanBoard({ campaigns: initial }: { campaigns: KanbanC
                     onDragStart={e => handleDragStart(e, c.id)}
                     style={{ cursor: 'grab' }}
                   >
-                    <Card c={c} onMaterialToggle={handleMaterialToggle} onNoteChange={handleNoteChange} />
+                    <Card c={c} onMaterialToggle={handleMaterialToggle} onNoteChange={handleNoteChange} onPdfUploaded={handlePdfUploaded} />
                   </div>
                 ))}
 

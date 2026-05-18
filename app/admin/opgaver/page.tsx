@@ -8,14 +8,15 @@ export default async function OpgaverPage() {
 
   const { data: campaigns } = await supabase
     .from('campaigns')
-    .select('id, name, start_date, placements, material_received, task_status, task_note, partners(name, slug)')
+    .select('id, name, start_date, placements, material_received, task_status, task_note, sent_pdf_url, partners(name, slug)')
     .eq('subject_pending', true)
     .order('start_date', { ascending: true })
 
   const normalized = (campaigns ?? []).map(c => ({
     ...c,
-    task_status: (c.task_status ?? 'todo') as 'todo' | 'in_progress' | 'done',
+    task_status: (c.task_status ?? 'todo') as 'todo' | 'in_progress' | 'done' | 'sent',
     task_note: c.task_note ?? null,
+    sent_pdf_url: c.sent_pdf_url ?? null,
     material_received: c.material_received ?? false,
     partners: (Array.isArray(c.partners) ? c.partners[0] ?? null : c.partners) as {
       name: string
