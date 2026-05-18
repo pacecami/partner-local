@@ -14,7 +14,7 @@ export default async function OpgaverPage() {
 
   const normalized = (campaigns ?? []).map(c => ({
     ...c,
-    task_status: (c.task_status ?? 'todo') as 'todo' | 'in_progress' | 'done' | 'sendt',
+    task_status: (c.task_status ?? 'todo') as 'todo' | 'in_progress' | 'done' | 'sent',
     task_note: c.task_note ?? null,
     sent_pdf_url: c.sent_pdf_url ?? null,
     material_received: c.material_received ?? false,
