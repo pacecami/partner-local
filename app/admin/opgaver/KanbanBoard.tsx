@@ -8,15 +8,16 @@ export type KanbanCampaign = {
   start_date: string | null
   placements: string[] | null
   material_received: boolean
-  task_status: 'todo' | 'in_progress' | 'done'
+  task_status: 'todo' | 'in_progress' | 'done' | 'sent'
   task_note: string | null
   partners: { name: string; slug: string } | null
 }
 
 const COLUMNS = [
-  { id: 'todo' as const, label: 'To do', dot: '#9ca3af' },
+  { id: 'todo' as const,        label: 'To do',       dot: '#9ca3af' },
   { id: 'in_progress' as const, label: 'In progress', dot: '#f97316' },
-  { id: 'done' as const, label: 'Done', dot: '#22c55e' },
+  { id: 'done' as const,        label: 'Done',        dot: '#22c55e' },
+  { id: 'sent' as const,        label: 'Sendt',       dot: '#3b82f6' },
 ]
 
 async function patchCampaign(id: string, updates: Record<string, unknown>) {
@@ -168,7 +169,7 @@ export default function KanbanBoard({ campaigns: initial }: { campaigns: KanbanC
     setDraggingOver(null)
   }
 
-  async function handleDrop(e: React.DragEvent, targetCol: 'todo' | 'in_progress' | 'done') {
+  async function handleDrop(e: React.DragEvent, targetCol: 'todo' | 'in_progress' | 'done' | 'sent') {
     e.preventDefault()
     setDraggingOver(null)
     const id = e.dataTransfer.getData('text/plain') || dragId.current
@@ -195,7 +196,7 @@ export default function KanbanBoard({ campaigns: initial }: { campaigns: KanbanC
   }
 
   const total = campaigns.length
-  const doneCount = campaigns.filter(c => c.task_status === 'done').length
+  const doneCount = campaigns.filter(c => c.task_status === 'done' || c.task_status === 'sent').length
 
   return (
     <div>
@@ -219,7 +220,7 @@ export default function KanbanBoard({ campaigns: initial }: { campaigns: KanbanC
       )}
 
       {/* Board */}
-      <div className="grid grid-cols-3 gap-5">
+      <div className="grid grid-cols-4 gap-5">
         {COLUMNS.map(col => {
           const cards = campaigns.filter(c => c.task_status === col.id)
           const isOver = draggingOver === col.id
