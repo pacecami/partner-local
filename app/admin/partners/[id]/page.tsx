@@ -959,23 +959,34 @@ export default async function PartnerDetailPage({
           </div>
           {/* Samlet tabel — samme format som partnersiden */}
           {(() => {
-            const totals: Record<string, number> = {}
-            ga4Properties.forEach(({ aliases, events: eventsStr }, i) => {
+            // Byg per-property totals: { propLabel -> { encodedAlias -> count } }
+            const perProp: Record<string, Record<string, number>> = {}
+            ga4Properties.forEach(({ label: propLabel, aliases, events: eventsStr }, i) => {
               const events = ga4Results[i]
               if (!events || events.length === 0) return
-              const aliasList = aliases ? aliases.split(',').map(a => a.trim()) : []
-              const eventList = (eventsStr ?? '').split(',').map(e => e.trim())
-              const aliasMap = Object.fromEntries(eventList.map((e, idx) => [e, aliasList[idx] || e]))
+              const aliasList = aliases ? aliases.split(',').map((a: string) => a.trim()) : []
+              const eventList = (eventsStr ?? '').split(',').map((e: string) => e.trim())
+              const aliasMap = Object.fromEntries(eventList.map((e: string, idx: number) => [e, aliasList[idx] || e]))
+              if (!perProp[propLabel]) perProp[propLabel] = {}
               events.forEach(({ eventName, count }: { eventName: string; count: number }) => {
                 const raw = aliasMap[eventName] || eventName
                 const alias = raw.replace(/\s+(iOS|Android)$/i, '').trim()
+                perProp[propLabel][alias] = (perProp[propLabel][alias] ?? 0) + count
+              })
+            })
+
+            // Samlet total på tværs af alle properties
+            const totals: Record<string, number> = {}
+            Object.values(perProp).forEach(propTotals => {
+              Object.entries(propTotals).forEach(([alias, count]) => {
                 totals[alias] = (totals[alias] ?? 0) + count
               })
             })
+
             if (Object.keys(totals).length === 0) return null
 
-            // Pair events med gruppe-logik
-            function pairAdminEvents(t: Record<string, number>) {
+            // Gruppe-logik: { gruppe -> { visninger, kliks } }
+            function pairEvents(t: Record<string, number>) {
               const grouped: Record<string, { visninger: number | null; kliks: number | null }> = {}
               for (const [alias, count] of Object.entries(t)) {
                 const sep = alias.indexOf(' > ')
@@ -989,19 +1000,33 @@ export default async function PartnerDetailPage({
               return grouped
             }
 
-            const paired = pairAdminEvents(totals)
+            const paired = pairEvents(totals)
+            const propLabels = Object.keys(perProp)
+
+            // Per-property breakdown per gruppe
+            const breakdown: Record<string, { label: string; visninger: number | null; kliks: number | null }[]> = {}
+            Object.entries(perProp).forEach(([propLabel, propTotals]) => {
+              const propPaired = pairEvents(propTotals)
+              Object.entries(propPaired).forEach(([gruppe, vals]) => {
+                if (!breakdown[gruppe]) breakdown[gruppe] = []
+                breakdown[gruppe].push({ label: propLabel, ...vals })
+              })
+            })
+
             const totalVis  = Object.values(paired).reduce((s, p) => s + (p.visninger ?? 0), 0)
             const totalKlik = Object.values(paired).reduce((s, p) => s + (p.kliks ?? 0), 0)
+
+            const colW = { vis: '80px', klik: '60px', rate: '60px' }
 
             return (
               <div className="rounded-xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
                 {/* Kolonneoverskrifter */}
                 <div className="px-5 py-3 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)', background: 'var(--surface-2)' }}>
                   <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Placering</p>
-                  <div className="flex items-center gap-5 text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>
-                    <span style={{ minWidth: '72px', textAlign: 'right' }}>Visninger</span>
-                    <span style={{ minWidth: '56px', textAlign: 'right' }}>Kliks</span>
-                    <span style={{ minWidth: '52px', textAlign: 'right' }}>Klikrate</span>
+                  <div className="flex items-center gap-4 text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>
+                    <span style={{ minWidth: colW.vis, textAlign: 'right' }}>Visninger</span>
+                    <span style={{ minWidth: colW.klik, textAlign: 'right' }}>Kliks</span>
+                    <span style={{ minWidth: colW.rate, textAlign: 'right' }}>Klikrate</span>
                   </div>
                 </div>
 
@@ -1010,20 +1035,44 @@ export default async function PartnerDetailPage({
                   {Object.entries(paired).map(([gruppe, { visninger, kliks }]) => {
                     const klikrate = visninger && kliks && visninger > 0
                       ? ((kliks / visninger) * 100).toFixed(2) : null
+                    const subs = breakdown[gruppe] ?? []
+                    const showSubs = subs.length > 1
+
                     return (
-                      <div key={gruppe} className="flex items-center justify-between py-3 border-b last:border-0" style={{ borderColor: 'var(--border)' }}>
-                        <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>{gruppe}</span>
-                        <div className="flex items-center gap-5 tabular-nums">
-                          <span className="text-sm font-bold text-right" style={{ minWidth: '72px', color: 'var(--foreground)' }}>
-                            {visninger != null ? visninger.toLocaleString('da-DK') : '—'}
-                          </span>
-                          <span className="text-sm font-bold text-right" style={{ minWidth: '56px', color: 'var(--foreground)' }}>
-                            {kliks != null ? kliks.toLocaleString('da-DK') : '—'}
-                          </span>
-                          <span className="text-sm font-bold text-right" style={{ minWidth: '52px', color: klikrate ? 'var(--accent)' : 'var(--muted)' }}>
-                            {klikrate ? `${klikrate}%` : '—'}
-                          </span>
+                      <div key={gruppe} className="border-b last:border-0" style={{ borderColor: 'var(--border)' }}>
+                        {/* Hoved-række */}
+                        <div className="flex items-center justify-between py-3">
+                          <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>{gruppe}</span>
+                          <div className="flex items-center gap-4 tabular-nums">
+                            <span className="text-sm font-bold text-right" style={{ minWidth: colW.vis, color: 'var(--foreground)' }}>
+                              {visninger != null ? visninger.toLocaleString('da-DK') : '—'}
+                            </span>
+                            <span className="text-sm font-bold text-right" style={{ minWidth: colW.klik, color: 'var(--foreground)' }}>
+                              {kliks != null ? kliks.toLocaleString('da-DK') : '—'}
+                            </span>
+                            <span className="text-sm font-bold text-right" style={{ minWidth: colW.rate, color: klikrate ? 'var(--accent)' : 'var(--muted)' }}>
+                              {klikrate ? `${klikrate}%` : '—'}
+                            </span>
+                          </div>
                         </div>
+                        {/* Sub-rækker per property */}
+                        {showSubs && subs.map(sub => (
+                          <div key={sub.label} className="flex items-center justify-between pb-2" style={{ paddingLeft: '16px' }}>
+                            <span className="text-xs" style={{ color: 'var(--muted)' }}>
+                              <span style={{ color: 'var(--border)', marginRight: '4px' }}>↳</span>
+                              {sub.label}
+                            </span>
+                            <div className="flex items-center gap-4 tabular-nums">
+                              <span className="text-xs text-right" style={{ minWidth: colW.vis, color: 'var(--muted)' }}>
+                                {sub.visninger != null ? sub.visninger.toLocaleString('da-DK') : '—'}
+                              </span>
+                              <span className="text-xs text-right" style={{ minWidth: colW.klik, color: 'var(--muted)' }}>
+                                {sub.kliks != null ? sub.kliks.toLocaleString('da-DK') : '—'}
+                              </span>
+                              <span className="text-xs text-right" style={{ minWidth: colW.rate, color: 'var(--muted)' }}>—</span>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     )
                   })}
@@ -1032,10 +1081,10 @@ export default async function PartnerDetailPage({
                 {/* Total */}
                 <div className="px-5 py-3 flex items-center justify-between border-t" style={{ borderColor: 'var(--border)', background: 'var(--surface-2)' }}>
                   <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Total</span>
-                  <div className="flex items-center gap-5 tabular-nums">
-                    <span className="text-sm font-bold text-right" style={{ minWidth: '72px', color: 'var(--foreground)' }}>{totalVis.toLocaleString('da-DK')}</span>
-                    <span className="text-sm font-bold text-right" style={{ minWidth: '56px', color: 'var(--foreground)' }}>{totalKlik.toLocaleString('da-DK')}</span>
-                    <span className="text-sm font-bold text-right" style={{ minWidth: '52px', color: 'var(--accent)' }}>
+                  <div className="flex items-center gap-4 tabular-nums">
+                    <span className="text-sm font-bold text-right" style={{ minWidth: colW.vis, color: 'var(--foreground)' }}>{totalVis.toLocaleString('da-DK')}</span>
+                    <span className="text-sm font-bold text-right" style={{ minWidth: colW.klik, color: 'var(--foreground)' }}>{totalKlik.toLocaleString('da-DK')}</span>
+                    <span className="text-sm font-bold text-right" style={{ minWidth: colW.rate, color: 'var(--accent)' }}>
                       {totalVis > 0 ? `${((totalKlik / totalVis) * 100).toFixed(2)}%` : '—'}
                     </span>
                   </div>
