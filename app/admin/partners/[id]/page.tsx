@@ -861,7 +861,7 @@ export default async function PartnerDetailPage({
                 </div>
 
                 {/* Event-rækker per property */}
-                {allProps.filter(p => p.id).map(p => (
+                {allProps.filter(p => p.id && p.enabled).map(p => (
                   <div key={p.key}>
                     <div className="flex items-baseline gap-2 mb-2">
                       <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--foreground)' }}>{p.label}</p>
