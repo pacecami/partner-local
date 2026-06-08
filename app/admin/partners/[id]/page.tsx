@@ -197,16 +197,23 @@ export default async function PartnerDetailPage({
     'use server'
     const supabase = await createClient()
 
-    function parsePairs(eventsKey: string, aliasesKey: string) {
+    function parsePairs(eventsKey: string, aliasesKey: string, groupsKey: string) {
       const evs = formData.getAll(eventsKey)  as string[]
       const als = formData.getAll(aliasesKey) as string[]
-      return evs.map((e, i) => ({ e: e.trim(), a: (als[i] ?? '').trim() })).filter(p => p.e)
+      const grs = formData.getAll(groupsKey)  as string[]
+      return evs.map((e, i) => ({
+        e: e.trim(),
+        // Gem gruppe som "gruppe > alias" hvis gruppe er udfyldt
+        a: (grs[i] ?? '').trim()
+          ? `${(grs[i] ?? '').trim()} > ${(als[i] ?? '').trim()}`
+          : (als[i] ?? '').trim(),
+      })).filter(p => p.e)
     }
 
-    const p1 = parsePairs('ga4_event_1', 'ga4_alias_1')
-    const p2 = parsePairs('ga4_event_2', 'ga4_alias_2')
-    const p3 = parsePairs('ga4_event_3', 'ga4_alias_3')
-    const p4 = parsePairs('ga4_event_4', 'ga4_alias_4')
+    const p1 = parsePairs('ga4_event_1', 'ga4_alias_1', 'ga4_group_1')
+    const p2 = parsePairs('ga4_event_2', 'ga4_alias_2', 'ga4_group_2')
+    const p3 = parsePairs('ga4_event_3', 'ga4_alias_3', 'ga4_group_3')
+    const p4 = parsePairs('ga4_event_4', 'ga4_alias_4', 'ga4_group_4')
 
     await supabase.from('partners').update({
       ga4_prop_1_enabled: formData.get('ga4_prop_1_enabled') === 'on',
@@ -789,8 +796,14 @@ export default async function PartnerDetailPage({
           const evRaw = (partnerEvents[i] ?? '').split(',').map((e: string) => e.trim()).filter(Boolean)
           const alRaw = (partnerAliases[i] ?? '').split(',').map((a: string) => a.trim())
           const rows = [
-            ...evRaw.map((ev: string, j: number) => ({ ev, al: alRaw[j] ?? '' })),
-            ...Array(Math.max(0, 5 - evRaw.length)).fill({ ev: '', al: '' }),
+            ...evRaw.map((ev: string, j: number) => {
+              const full = alRaw[j] ?? ''
+              const sep = full.indexOf(' > ')
+              const gr = sep > -1 ? full.slice(0, sep) : ''
+              const al = sep > -1 ? full.slice(sep + 3) : full
+              return { ev, al, gr }
+            }),
+            ...Array(Math.max(0, 5 - evRaw.length)).fill({ ev: '', al: '', gr: '' }),
           ]
           return { key, label, id, enabled, rows, idx: i + 1 }
         })
@@ -855,12 +868,16 @@ export default async function PartnerDetailPage({
                       <p className="text-xs font-mono" style={{ color: 'var(--muted)' }}>{p.id}</p>
                     </div>
                     <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--border)' }}>
-                      <div className="grid grid-cols-2" style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
+                      <div className="grid grid-cols-3" style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
                         <div className="px-3 py-2 text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Teknisk event navn</div>
                         <div className="px-3 py-2 text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)', borderLeft: '1px solid var(--border)' }}>Visningsnavn (hvad partneren ser)</div>
+                        <div className="px-3 py-2 text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)', borderLeft: '1px solid var(--border)' }}>
+                          Gruppe
+                          <span className="ml-1 normal-case font-normal" style={{ color: 'var(--muted)', opacity: 0.6 }}>(sæt samme navn på visninger + klik)</span>
+                        </div>
                       </div>
-                      {p.rows.map((row: { ev: string; al: string }, i: number) => (
-                        <div key={i} className="grid grid-cols-2" style={{ borderBottom: i < p.rows.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                      {p.rows.map((row: { ev: string; al: string; gr: string }, i: number) => (
+                        <div key={i} className="grid grid-cols-3" style={{ borderBottom: i < p.rows.length - 1 ? '1px solid var(--border)' : 'none' }}>
                           <div className="px-2 py-1.5">
                             <input
                               name={`ga4_event_${p.idx}`}
@@ -877,6 +894,15 @@ export default async function PartnerDetailPage({
                               placeholder="Visningsnavn"
                               className="w-full px-2 py-1 rounded text-xs outline-none"
                               style={{ background: 'transparent', color: 'var(--foreground)' }}
+                            />
+                          </div>
+                          <div className="px-2 py-1.5" style={{ borderLeft: '1px solid var(--border)' }}>
+                            <input
+                              name={`ga4_group_${p.idx}`}
+                              defaultValue={row.gr}
+                              placeholder="fx ejerskifte"
+                              className="w-full px-2 py-1 rounded text-xs outline-none"
+                              style={{ background: 'transparent', color: 'var(--accent)' }}
                             />
                           </div>
                         </div>

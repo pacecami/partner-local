@@ -7,11 +7,12 @@ import { GA4_PROPS } from '@/app/admin/indstillinger/page'
 import PlacementLightbox from '@/components/PlacementLightbox'
 import StatRow from '@/components/StatRow'
 
-// Parrer "Visninger - X" med "Klik X" / "Klik - X" baseret på base-navn
-function pairEvents(totals: Record<string, number>, fixedPlacements: { name: string; image_url: string | null }[]) {
-  const entries = Object.entries(totals)
-
-  // Find image for a label by matching fixed placement names
+// Parrer events baseret på eksplicit gruppe ("gruppe > Visningsnavn")
+// eller falder tilbage på alias-navn hvis ingen gruppe er angivet
+function pairEvents(
+  totals: Record<string, number>,
+  fixedPlacements: { name: string; image_url: string | null }[]
+) {
   function findImage(label: string): string | null {
     const lower = label.toLowerCase()
     const match = fixedPlacements.find(fp =>
@@ -20,47 +21,26 @@ function pairEvents(totals: Record<string, number>, fixedPlacements: { name: str
     return match?.image_url ?? null
   }
 
-  function baseName(alias: string) {
-    return alias
-      .replace(/^visninger\s*[-–]\s*/i, '')
-      .replace(/^visninger\s+/i, '')
-      .replace(/^klik\s*[-–]\s*/i, '')
-      .replace(/^klik\s+/i, '')
-      .trim()
-  }
+  // Byg en map: alias → { gruppe, visningsnavn, count }
+  // alias er enten "gruppe > Visningsnavn" eller bare "Visningsnavn"
+  const grouped: Record<string, { visninger: number | null; kliks: number | null; imageUrl: string | null }> = {}
 
-  const visninger = entries.filter(([a]) => /^visninger/i.test(a))
-  const kliks     = entries.filter(([a]) => /^klik/i.test(a))
-  const other     = entries.filter(([a]) => !/^(visninger|klik)/i.test(a))
+  for (const [alias, count] of Object.entries(totals)) {
+    const sep = alias.indexOf(' > ')
+    const gruppe    = sep > -1 ? alias.slice(0, sep).trim() : alias
+    const display   = sep > -1 ? alias.slice(sep + 3).trim() : alias
+    const isKlik    = /^klik/i.test(display)
 
-  const paired: { label: string; visninger: number | null; kliks: number | null; imageUrl: string | null }[] = []
-  const usedKlik = new Set<string>()
+    if (!grouped[gruppe]) grouped[gruppe] = { visninger: null, kliks: null, imageUrl: findImage(gruppe) }
 
-  for (const [visAlias, visCount] of visninger) {
-    const base = baseName(visAlias)
-    const klikMatch = kliks.find(([ka]) => !usedKlik.has(ka) && baseName(ka) === base)
-    if (klikMatch) {
-      usedKlik.add(klikMatch[0])
-      paired.push({ label: base || visAlias, visninger: visCount, kliks: klikMatch[1], imageUrl: findImage(base || visAlias) })
+    if (isKlik) {
+      grouped[gruppe].kliks = (grouped[gruppe].kliks ?? 0) + count
     } else {
-      paired.push({ label: base || visAlias, visninger: visCount, kliks: null, imageUrl: findImage(base || visAlias) })
+      grouped[gruppe].visninger = (grouped[gruppe].visninger ?? 0) + count
     }
   }
 
-  // Uparrede kliks
-  for (const [klikAlias, klikCount] of kliks) {
-    if (!usedKlik.has(klikAlias)) {
-      const base = baseName(klikAlias)
-      paired.push({ label: base || klikAlias, visninger: null, kliks: klikCount, imageUrl: findImage(base || klikAlias) })
-    }
-  }
-
-  // Andre events (hverken visninger eller klik)
-  for (const [alias, count] of other) {
-    paired.push({ label: alias, visninger: count, kliks: null, imageUrl: findImage(alias) })
-  }
-
-  return paired
+  return Object.entries(grouped).map(([label, data]) => ({ label, ...data }))
 }
 
 export const dynamic = 'force-dynamic'
