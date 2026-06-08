@@ -957,47 +957,7 @@ export default async function PartnerDetailPage({
               )}
             </div>
           </div>
-          {ga4Properties.map(({ id, label, aliases }, i) => {
-            const events = ga4Results[i]
-            const aliasMap = aliases
-              ? Object.fromEntries(
-                  (ga4Properties[i].events ?? '').split(',').map((e, idx) => [
-                    e.trim(),
-                    aliases.split(',')[idx]?.trim() || e.trim(),
-                  ])
-                )
-              : {}
-            return (
-              <div key={id} className="rounded-xl p-5" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-                <p className="text-xs mb-4 font-mono" style={{ color: 'var(--muted)' }}>{label ?? `Property ${i + 1}`}: {id}</p>
-                {events && events.length > 0 ? (
-                  <div className="space-y-1">
-                    {events.map(({ eventName, count }) => {
-                      const displayName = aliasMap[eventName] || eventName
-                      const hasAlias = displayName !== eventName
-                      return (
-                        <div key={eventName} className="flex items-center justify-between py-2 border-b last:border-0" style={{ borderColor: 'var(--border)' }}>
-                          <div>
-                            {hasAlias && (
-                              <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>{displayName}</p>
-                            )}
-                            <p className="text-xs font-mono" style={{ color: 'var(--muted)' }}>{eventName}</p>
-                          </div>
-                          <span className="text-sm font-bold" style={{ color: 'var(--accent)' }}>{count.toLocaleString('da-DK')}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                    {events === null ? 'Kunne ikke hente data — tjek at service accounten har adgang.' : 'Ingen events konfigureret.'}
-                  </p>
-                )}
-              </div>
-            )
-          })}
-
-          {/* I alt */}
+          {/* Samlet tabel — samme format som partnersiden */}
           {(() => {
             const totals: Record<string, number> = {}
             ga4Properties.forEach(({ aliases, events: eventsStr }, i) => {
@@ -1008,26 +968,76 @@ export default async function PartnerDetailPage({
               const aliasMap = Object.fromEntries(eventList.map((e, idx) => [e, aliasList[idx] || e]))
               events.forEach(({ eventName, count }: { eventName: string; count: number }) => {
                 const raw = aliasMap[eventName] || eventName
-                // Slå iOS og Android-varianter sammen til én linje
                 const alias = raw.replace(/\s+(iOS|Android)$/i, '').trim()
                 totals[alias] = (totals[alias] ?? 0) + count
               })
             })
-            const grandTotal = Object.values(totals).reduce((s, c) => s + c, 0)
-            if (grandTotal === 0) return null
+            if (Object.keys(totals).length === 0) return null
+
+            // Pair events med gruppe-logik
+            function pairAdminEvents(t: Record<string, number>) {
+              const grouped: Record<string, { visninger: number | null; kliks: number | null }> = {}
+              for (const [alias, count] of Object.entries(t)) {
+                const sep = alias.indexOf(' > ')
+                const gruppe  = sep > -1 ? alias.slice(0, sep).trim() : alias
+                const display = sep > -1 ? alias.slice(sep + 3).trim() : alias
+                const isKlik  = /^klik/i.test(display)
+                if (!grouped[gruppe]) grouped[gruppe] = { visninger: null, kliks: null }
+                if (isKlik) grouped[gruppe].kliks = (grouped[gruppe].kliks ?? 0) + count
+                else grouped[gruppe].visninger = (grouped[gruppe].visninger ?? 0) + count
+              }
+              return grouped
+            }
+
+            const paired = pairAdminEvents(totals)
+            const totalVis  = Object.values(paired).reduce((s, p) => s + (p.visninger ?? 0), 0)
+            const totalKlik = Object.values(paired).reduce((s, p) => s + (p.kliks ?? 0), 0)
+
             return (
-              <div className="rounded-xl p-5" style={{ background: 'var(--surface)', border: '1px solid var(--accent)' }}>
-                <p className="text-xs font-semibold mb-3" style={{ color: 'var(--accent)' }}>I alt</p>
-                <div className="space-y-1">
-                  {Object.entries(totals).map(([alias, count]) => (
-                    <div key={alias} className="flex items-center justify-between py-2 border-b last:border-0" style={{ borderColor: 'var(--border)' }}>
-                      <span className="text-sm" style={{ color: 'var(--foreground)' }}>{alias}</span>
-                      <span className="text-sm font-bold tabular-nums" style={{ color: 'var(--accent)' }}>{count.toLocaleString('da-DK')}</span>
-                    </div>
-                  ))}
-                  <div className="flex items-center justify-between pt-3 mt-1" style={{ borderTop: '2px solid var(--border)' }}>
-                    <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Samlet total</span>
-                    <span className="text-lg font-bold tabular-nums" style={{ color: 'var(--accent)' }}>{grandTotal.toLocaleString('da-DK')}</span>
+              <div className="rounded-xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                {/* Kolonneoverskrifter */}
+                <div className="px-5 py-3 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)', background: 'var(--surface-2)' }}>
+                  <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Placering</p>
+                  <div className="flex items-center gap-5 text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>
+                    <span style={{ minWidth: '72px', textAlign: 'right' }}>Visninger</span>
+                    <span style={{ minWidth: '56px', textAlign: 'right' }}>Kliks</span>
+                    <span style={{ minWidth: '52px', textAlign: 'right' }}>Klikrate</span>
+                  </div>
+                </div>
+
+                {/* Rækker */}
+                <div className="px-5">
+                  {Object.entries(paired).map(([gruppe, { visninger, kliks }]) => {
+                    const klikrate = visninger && kliks && visninger > 0
+                      ? ((kliks / visninger) * 100).toFixed(2) : null
+                    return (
+                      <div key={gruppe} className="flex items-center justify-between py-3 border-b last:border-0" style={{ borderColor: 'var(--border)' }}>
+                        <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>{gruppe}</span>
+                        <div className="flex items-center gap-5 tabular-nums">
+                          <span className="text-sm font-bold text-right" style={{ minWidth: '72px', color: 'var(--foreground)' }}>
+                            {visninger != null ? visninger.toLocaleString('da-DK') : '—'}
+                          </span>
+                          <span className="text-sm font-bold text-right" style={{ minWidth: '56px', color: 'var(--foreground)' }}>
+                            {kliks != null ? kliks.toLocaleString('da-DK') : '—'}
+                          </span>
+                          <span className="text-sm font-bold text-right" style={{ minWidth: '52px', color: klikrate ? 'var(--accent)' : 'var(--muted)' }}>
+                            {klikrate ? `${klikrate}%` : '—'}
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Total */}
+                <div className="px-5 py-3 flex items-center justify-between border-t" style={{ borderColor: 'var(--border)', background: 'var(--surface-2)' }}>
+                  <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Total</span>
+                  <div className="flex items-center gap-5 tabular-nums">
+                    <span className="text-sm font-bold text-right" style={{ minWidth: '72px', color: 'var(--foreground)' }}>{totalVis.toLocaleString('da-DK')}</span>
+                    <span className="text-sm font-bold text-right" style={{ minWidth: '56px', color: 'var(--foreground)' }}>{totalKlik.toLocaleString('da-DK')}</span>
+                    <span className="text-sm font-bold text-right" style={{ minWidth: '52px', color: 'var(--accent)' }}>
+                      {totalVis > 0 ? `${((totalKlik / totalVis) * 100).toFixed(2)}%` : '—'}
+                    </span>
                   </div>
                 </div>
               </div>

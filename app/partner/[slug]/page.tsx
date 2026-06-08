@@ -505,7 +505,7 @@ export default async function PartnerDashboardPage({
                 </div>
               </div>
             </div>
-            {/* I alt — parrede visninger + kliks med klikrate */}
+            {/* Statistik — grouped oversigt + per-property breakdown */}
             {(() => {
               const totals: Record<string, number> = {}
               ga4Properties.forEach(({ aliases, events: eventsStr }, i) => {
@@ -524,41 +524,72 @@ export default async function PartnerDashboardPage({
               const pairs = pairEvents(totals, fixedPlacements ?? [])
               const totalVisninger = pairs.reduce((s, p) => s + (p.visninger ?? 0), 0)
               const totalKliks = pairs.reduce((s, p) => s + (p.kliks ?? 0), 0)
+
               return (
                 <div className="rounded-xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-                  <div className="px-5 py-3 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
-                    <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Samlet oversigt</p>
-                    <div className="flex items-center gap-6 text-xs" style={{ color: 'var(--muted)' }}>
-                      <span>Visninger</span>
-                      <span>Kliks</span>
+                  {/* Header med kolonner */}
+                  <div className="px-5 py-3 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)', background: 'var(--surface-2)' }}>
+                    <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Placering</p>
+                    <div className="flex items-center gap-5 text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>
+                      <span style={{ minWidth: '72px', textAlign: 'right' }}>Visninger</span>
+                      <span style={{ minWidth: '56px', textAlign: 'right' }}>Kliks</span>
                       <span style={{ minWidth: '52px', textAlign: 'right' }}>Klikrate</span>
                     </div>
                   </div>
-                  <div className="px-5">
-                    {pairs.map((p) => (
-                      <StatRow
-                        key={p.label}
-                        label={p.label}
-                        visninger={p.visninger}
-                        kliks={p.kliks}
-                        imageUrl={p.imageUrl}
-                      />
-                    ))}
-                  </div>
+
+                  {/* Én blok per gruppe */}
+                  {pairs.map((p) => {
+                    // Find per-property breakdown for denne gruppe
+                    const breakdown = ga4Properties.map(({ label: propLabel, aliases, events: eventsStr }, i) => {
+                      const events = ga4Results[i]
+                      if (!events) return null
+                      const aliasList = aliases ? aliases.split(',').map(a => a.trim()) : []
+                      const eventList = (eventsStr ?? '').split(',').map(e => e.trim())
+                      let vis = 0, klik = 0
+                      eventList.forEach((ev, idx) => {
+                        const fullAlias = aliasList[idx] ?? ev
+                        const sep = fullAlias.indexOf(' > ')
+                        const gruppe = sep > -1 ? fullAlias.slice(0, sep).trim() : fullAlias
+                        const display = sep > -1 ? fullAlias.slice(sep + 3).trim() : fullAlias
+                        if (gruppe !== p.label) return
+                        const count = events.find(e => e.eventName === ev)?.count ?? 0
+                        if (/^klik/i.test(display)) klik += count
+                        else vis += count
+                      })
+                      if (vis === 0 && klik === 0) return null
+                      return { propLabel, vis, klik }
+                    }).filter(Boolean) as { propLabel: string; vis: number; klik: number }[]
+
+                    return (
+                      <div key={p.label} className="border-b last:border-0" style={{ borderColor: 'var(--border)' }}>
+                        {/* Gruppe-række */}
+                        <div className="px-5">
+                          <StatRow label={p.label} visninger={p.visninger} kliks={p.kliks} imageUrl={p.imageUrl} />
+                        </div>
+                        {/* Per-property underrækker */}
+                        {breakdown.length > 1 && (
+                          <div className="px-5 pb-2" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                            {breakdown.map(b => (
+                              <StatRow key={b.propLabel} label={b.propLabel} visninger={b.vis || null} kliks={b.klik || null} sub />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+
+                  {/* Total-række */}
                   {(totalVisninger > 0 || totalKliks > 0) && (
-                    <div className="px-5 py-3 flex items-center justify-between border-t" style={{ borderColor: 'var(--border)', background: 'var(--surface-2)' }}>
+                    <div className="px-5 py-3 flex items-center justify-between" style={{ background: 'var(--surface-2)', borderTop: '1px solid var(--border)' }}>
                       <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Total</span>
                       <div className="flex items-center gap-5 tabular-nums">
-                        <div className="text-right">
-                          <p className="text-xs" style={{ color: 'var(--muted)' }}>Visninger</p>
+                        <div className="text-right" style={{ minWidth: '72px' }}>
                           <p className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>{totalVisninger.toLocaleString('da-DK')}</p>
                         </div>
-                        <div className="text-right">
-                          <p className="text-xs" style={{ color: 'var(--muted)' }}>Kliks</p>
+                        <div className="text-right" style={{ minWidth: '56px' }}>
                           <p className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>{totalKliks.toLocaleString('da-DK')}</p>
                         </div>
                         <div className="text-right" style={{ minWidth: '52px' }}>
-                          <p className="text-xs" style={{ color: 'var(--muted)' }}>Klikrate</p>
                           <p className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
                             {totalVisninger > 0 ? `${((totalKliks / totalVisninger) * 100).toFixed(2)}%` : '—'}
                           </p>
