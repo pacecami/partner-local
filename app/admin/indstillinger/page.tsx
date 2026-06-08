@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import TestMailButton from './TestMailButton'
 
@@ -22,7 +23,7 @@ export default async function IndstillingerPage() {
 
   async function saveGa4Global(formData: FormData) {
     'use server'
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     await Promise.all(
       GA4_PROPS.map(({ key }) =>
         supabase.from('settings').upsert({
@@ -96,7 +97,7 @@ export default async function IndstillingerPage() {
         </div>
         <form action={async (formData: FormData) => {
           'use server'
-          const supabase = await createClient()
+          const supabase = createAdminClient()
           const value = (formData.get('google_service_account_json') as string).trim()
           await supabase.from('settings').upsert({ key: 'google_service_account_json', value })
           redirect('/admin/indstillinger?saved=true')

@@ -103,7 +103,7 @@ export default async function PartnerTokenPage({
     .from('campaigns')
     .select('*')
     .eq('partner_id', partner.id)
-    .order('start_date', { ascending: false })
+    .order('start_date', { ascending: true })
 
   const { data: fixedPlacements } = await supabase
     .from('fixed_placements')
@@ -280,7 +280,7 @@ export default async function PartnerTokenPage({
                       </td>
                       <td className="px-4 py-4"><StatusBadge status={c.status} /></td>
                       <td className="px-4 py-4 text-xs whitespace-nowrap" style={{ color: 'var(--muted)' }}>
-                        {c.start_date ? `${c.start_date.slice(0, 7)}${c.end_date ? ` → ${c.end_date.slice(0, 7)}` : ''}` : '—'}
+                        {c.start_date ? `${c.start_date.slice(5,7)}-${c.start_date.slice(0,4)}${c.end_date ? ` → ${c.end_date.slice(5,7)}-${c.end_date.slice(0,4)}` : ''}` : '—'}
                       </td>
                       <td className="px-4 py-4 text-sm whitespace-nowrap" style={{ color: 'var(--foreground)' }}>
                         {c.monthly_budget ? `${c.monthly_budget.toLocaleString('da-DK')} kr` : '—'}

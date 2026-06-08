@@ -7,9 +7,9 @@ export const dynamic = 'force-dynamic'
 export default async function BrugerePage({
   searchParams,
 }: {
-  searchParams: Promise<{ created?: string; error?: string }>
+  searchParams: Promise<{ created?: string; error?: string; resetLink?: string; resetEmail?: string }>
 }) {
-  const { created, error } = await searchParams
+  const { created, error, resetLink, resetEmail } = await searchParams
   const supabase = await createClient()
 
   const { data: admins } = await supabase
@@ -48,6 +48,21 @@ export default async function BrugerePage({
     redirect('/admin/brugere?created=1')
   }
 
+  async function sendResetLink(formData: FormData) {
+    'use server'
+    const email = (formData.get('email') as string).trim().toLowerCase()
+    const adminClient = createAdminClient()
+    const { data, error } = await adminClient.auth.admin.generateLink({
+      type: 'recovery',
+      email,
+    })
+    if (error || !data?.properties?.action_link) {
+      redirect('/admin/brugere?error=1')
+    }
+    const link = encodeURIComponent(data.properties.action_link)
+    redirect(`/admin/brugere?resetLink=${link}&resetEmail=${encodeURIComponent(email)}`)
+  }
+
   const hasServiceKey = !!process.env.SUPABASE_SERVICE_ROLE_KEY
 
   const inputStyle = {
@@ -76,6 +91,19 @@ export default async function BrugerePage({
           Noget gik galt. Tjek at emailen ikke allerede er i brug.
         </div>
       )}
+      {resetLink && (
+        <div className="rounded-lg px-4 py-4 space-y-2" style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.3)' }}>
+          <p className="text-sm font-semibold" style={{ color: 'rgb(34,197,94)' }}>
+            ✓ Nulstillingslink genereret for {resetEmail}
+          </p>
+          <p className="text-xs" style={{ color: 'var(--muted)' }}>Kopier og send dette link til brugeren — det er engangsbrug og udløber efter 24 timer:</p>
+          <div className="flex items-center gap-2 mt-1">
+            <code className="flex-1 text-xs px-3 py-2 rounded-lg break-all" style={{ background: 'var(--surface-2)', color: 'var(--foreground)', border: '1px solid var(--border)' }}>
+              {decodeURIComponent(resetLink)}
+            </code>
+          </div>
+        </div>
+      )}
 
       {/* Brugertabel */}
       <section
@@ -90,7 +118,7 @@ export default async function BrugerePage({
         <table className="w-full">
           <thead>
             <tr style={{ borderBottom: '1px solid var(--border)' }}>
-              {['Navn', 'Email', 'Rolle'].map(h => (
+              {['Navn', 'Email', 'Rolle', ''].map(h => (
                 <th key={h} className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>
                   {h}
                 </th>
@@ -110,6 +138,16 @@ export default async function BrugerePage({
                   <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ background: 'var(--surface-2)', color: 'var(--foreground)' }}>
                     Admin
                   </span>
+                </td>
+                <td className="px-6 py-4 text-right">
+                  {hasServiceKey && (
+                    <form action={sendResetLink}>
+                      <input type="hidden" name="email" value={u.email ?? ''} />
+                      <button type="submit" className="text-xs px-3 py-1.5 rounded-lg" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--muted)' }}>
+                        Nulstil adgangskode
+                      </button>
+                    </form>
+                  )}
                 </td>
               </tr>
             ))}
