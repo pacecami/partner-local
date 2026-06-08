@@ -5,6 +5,63 @@ import { fetchGA4Events } from '@/lib/ga4'
 import { fetchPacenamiStats, type PacenamiStats } from '@/lib/pacenami'
 import { GA4_PROPS } from '@/app/admin/indstillinger/page'
 import PlacementLightbox from '@/components/PlacementLightbox'
+import StatRow from '@/components/StatRow'
+
+// Parrer "Visninger - X" med "Klik X" / "Klik - X" baseret på base-navn
+function pairEvents(totals: Record<string, number>, fixedPlacements: { name: string; image_url: string | null }[]) {
+  const entries = Object.entries(totals)
+
+  // Find image for a label by matching fixed placement names
+  function findImage(label: string): string | null {
+    const lower = label.toLowerCase()
+    const match = fixedPlacements.find(fp =>
+      lower.includes(fp.name.toLowerCase()) || fp.name.toLowerCase().includes(lower)
+    )
+    return match?.image_url ?? null
+  }
+
+  function baseName(alias: string) {
+    return alias
+      .replace(/^visninger\s*[-–]\s*/i, '')
+      .replace(/^visninger\s+/i, '')
+      .replace(/^klik\s*[-–]\s*/i, '')
+      .replace(/^klik\s+/i, '')
+      .trim()
+  }
+
+  const visninger = entries.filter(([a]) => /^visninger/i.test(a))
+  const kliks     = entries.filter(([a]) => /^klik/i.test(a))
+  const other     = entries.filter(([a]) => !/^(visninger|klik)/i.test(a))
+
+  const paired: { label: string; visninger: number | null; kliks: number | null; imageUrl: string | null }[] = []
+  const usedKlik = new Set<string>()
+
+  for (const [visAlias, visCount] of visninger) {
+    const base = baseName(visAlias)
+    const klikMatch = kliks.find(([ka]) => !usedKlik.has(ka) && baseName(ka) === base)
+    if (klikMatch) {
+      usedKlik.add(klikMatch[0])
+      paired.push({ label: base || visAlias, visninger: visCount, kliks: klikMatch[1], imageUrl: findImage(base || visAlias) })
+    } else {
+      paired.push({ label: base || visAlias, visninger: visCount, kliks: null, imageUrl: findImage(base || visAlias) })
+    }
+  }
+
+  // Uparrede kliks
+  for (const [klikAlias, klikCount] of kliks) {
+    if (!usedKlik.has(klikAlias)) {
+      const base = baseName(klikAlias)
+      paired.push({ label: base || klikAlias, visninger: null, kliks: klikCount, imageUrl: findImage(base || klikAlias) })
+    }
+  }
+
+  // Andre events (hverken visninger eller klik)
+  for (const [alias, count] of other) {
+    paired.push({ label: alias, visninger: count, kliks: null, imageUrl: findImage(alias) })
+  }
+
+  return paired
+}
 
 export const dynamic = 'force-dynamic'
 
@@ -468,52 +525,7 @@ export default async function PartnerDashboardPage({
                 </div>
               </div>
             </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              {ga4Properties.map(({ id, label, aliases, events: eventsStr }, i) => {
-                const events = ga4Results[i]
-                const aliasList = aliases ? aliases.split(',').map(a => a.trim()) : []
-                const eventList = (eventsStr ?? '').split(',').map(e => e.trim())
-                const aliasMap = Object.fromEntries(eventList.map((e, idx) => [e, aliasList[idx] || e]))
-                return (
-                  <div
-                    key={id}
-                    className="rounded-xl p-5"
-                    style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
-                  >
-                    <p className="text-xs font-semibold mb-4" style={{ color: 'var(--foreground)' }}>
-                      {label ?? `Property ${i + 1}`}
-                    </p>
-                    {events && events.length > 0 ? (
-                      <div className="space-y-2">
-                        {events.map(({ eventName, count }) => (
-                          <div
-                            key={eventName}
-                            className="flex items-center justify-between py-2 border-b last:border-0"
-                            style={{ borderColor: 'var(--border)' }}
-                          >
-                            <span className="text-sm" style={{ color: 'var(--foreground)' }}>
-                              {aliasMap[eventName] || eventName}
-                            </span>
-                            <span
-                              className="text-sm font-bold tabular-nums"
-                              style={{ color: 'var(--accent)' }}
-                            >
-                              {count.toLocaleString('da-DK')}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                        {events === null ? 'Kunne ikke hente data.' : 'Ingen events konfigureret.'}
-                      </p>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-
-            {/* I alt — sum på tværs af alle properties */}
+            {/* I alt — parrede visninger + kliks med klikrate */}
             {(() => {
               const totals: Record<string, number> = {}
               ga4Properties.forEach(({ aliases, events: eventsStr }, i) => {
@@ -524,41 +536,56 @@ export default async function PartnerDashboardPage({
                 const aliasMap = Object.fromEntries(eventList.map((e, idx) => [e, aliasList[idx] || e]))
                 events.forEach(({ eventName, count }: { eventName: string; count: number }) => {
                   const raw = aliasMap[eventName] || eventName
-                  // Slå iOS og Android-varianter sammen til én linje
                   const alias = raw.replace(/\s+(iOS|Android)$/i, '').trim()
                   totals[alias] = (totals[alias] ?? 0) + count
                 })
               })
-              const grandTotal = Object.values(totals).reduce((s, c) => s + c, 0)
-              if (grandTotal === 0) return null
+              if (Object.keys(totals).length === 0) return null
+              const pairs = pairEvents(totals, fixedPlacements ?? [])
+              const totalVisninger = pairs.reduce((s, p) => s + (p.visninger ?? 0), 0)
+              const totalKliks = pairs.reduce((s, p) => s + (p.kliks ?? 0), 0)
               return (
-                <div
-                  className="rounded-xl p-5"
-                  style={{ background: 'var(--surface)', border: '1px solid rgba(200,168,0,0.4)' }}
-                >
-                  <p className="text-xs font-semibold mb-4" style={{ color: 'var(--accent)' }}>
-                    I alt
-                  </p>
-                  <div className="space-y-2">
-                    {Object.entries(totals).map(([alias, count]) => (
-                      <div
-                        key={alias}
-                        className="flex items-center justify-between py-2 border-b last:border-0"
-                        style={{ borderColor: 'var(--border)' }}
-                      >
-                        <span className="text-sm" style={{ color: 'var(--foreground)' }}>{alias}</span>
-                        <span className="text-sm font-bold tabular-nums" style={{ color: 'var(--accent)' }}>
-                          {count.toLocaleString('da-DK')}
-                        </span>
-                      </div>
-                    ))}
-                    <div className="flex items-center justify-between pt-3 mt-1" style={{ borderTop: '2px solid var(--border)' }}>
-                      <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Samlet total</span>
-                      <span className="text-lg font-bold tabular-nums" style={{ color: 'var(--accent)' }}>
-                        {grandTotal.toLocaleString('da-DK')}
-                      </span>
+                <div className="rounded-xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                  <div className="px-5 py-3 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
+                    <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Samlet oversigt</p>
+                    <div className="flex items-center gap-6 text-xs" style={{ color: 'var(--muted)' }}>
+                      <span>Visninger</span>
+                      <span>Kliks</span>
+                      <span style={{ minWidth: '52px', textAlign: 'right' }}>Klikrate</span>
                     </div>
                   </div>
+                  <div className="px-5">
+                    {pairs.map((p) => (
+                      <StatRow
+                        key={p.label}
+                        label={p.label}
+                        visninger={p.visninger}
+                        kliks={p.kliks}
+                        imageUrl={p.imageUrl}
+                      />
+                    ))}
+                  </div>
+                  {(totalVisninger > 0 || totalKliks > 0) && (
+                    <div className="px-5 py-3 flex items-center justify-between border-t" style={{ borderColor: 'var(--border)', background: 'var(--surface-2)' }}>
+                      <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Total</span>
+                      <div className="flex items-center gap-5 tabular-nums">
+                        <div className="text-right">
+                          <p className="text-xs" style={{ color: 'var(--muted)' }}>Visninger</p>
+                          <p className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>{totalVisninger.toLocaleString('da-DK')}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs" style={{ color: 'var(--muted)' }}>Kliks</p>
+                          <p className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>{totalKliks.toLocaleString('da-DK')}</p>
+                        </div>
+                        <div className="text-right" style={{ minWidth: '52px' }}>
+                          <p className="text-xs" style={{ color: 'var(--muted)' }}>Klikrate</p>
+                          <p className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
+                            {totalVisninger > 0 ? `${((totalKliks / totalVisninger) * 100).toFixed(2)}%` : '—'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )
             })()}
