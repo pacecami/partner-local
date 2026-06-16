@@ -56,7 +56,7 @@ export default async function EditCampaignPage({
     const subject_pending = formData.get('subject_pending') === 'on'
 
     const graphicFile = formData.get('graphic') as File | null
-    let graphic_url = campaign.graphic_url
+    let graphic_url = (formData.get('existing_graphic_url') as string) || null
     if (graphicFile && graphicFile.size > 0) {
       try {
         const bytes = await graphicFile.arrayBuffer()
@@ -102,6 +102,7 @@ export default async function EditCampaignPage({
 
       <section className="rounded-xl p-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
         <form action={updateCampaign} className="space-y-4" encType="multipart/form-data">
+          <input type="hidden" name="existing_graphic_url" value={campaign.graphic_url ?? ''} />
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
               <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Kampagnenavn *</label>
