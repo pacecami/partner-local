@@ -697,36 +697,6 @@ export default async function PartnerDetailPage({
       </div>{/* /kampagner */}
 
       {/* Partnerinfo */}
-      <div data-section-id="partnerinfo" data-section-label="Partnerinfo">
-      <section className="rounded-xl p-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-        <h2 className="font-semibold text-sm mb-4" style={{ color: 'var(--foreground)' }}>Partnerinfo</h2>
-        <form action={updatePartner} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Navn *</label>
-              <input name="name" required defaultValue={partner.name} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Abonnement startdato</label>
-              <input name="subscription_start" type="date" defaultValue={partner.subscription_start ?? ''} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Abonnement slutdato</label>
-              <input name="subscription_end" type="date" defaultValue={partner.subscription_end ?? ''} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
-            </div>
-            <div className="col-span-2">
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Samlet budget for perioden (kr, ex. moms)</label>
-              <input name="subscription_budget" type="text" inputMode="numeric" defaultValue={partner.subscription_budget ? partner.subscription_budget.toLocaleString('da-DK') : ''} placeholder="120.000" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
-            </div>
-          </div>
-          <div className="flex justify-end">
-            <button type="submit" className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: 'var(--accent)', color: '#000' }}>Gem ændringer</button>
-          </div>
-        </form>
-      </section>
-
-      </div>{/* /partnerinfo */}
-
       {/* GA4 Events */}
       <div data-section-id="ga4-config" data-section-label="GA4 Events">
       {(() => {
