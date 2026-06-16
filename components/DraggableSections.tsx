@@ -58,7 +58,7 @@ export default function DraggableSections({
       {ordered.map((section, idx) => (
         <div
           key={section.id}
-          className="relative group/section"
+          className="flex items-start gap-1 group/section"
           onDragOver={(e) => {
             e.preventDefault()
             if (dragIdx !== null && dragIdx !== idx) setOverIdx(idx)
@@ -84,20 +84,17 @@ export default function DraggableSections({
             transition: 'opacity 0.15s',
           }}
         >
-          {/* Drag handle — vises ved hover */}
+          {/* Drag handle i venstre side — som HubSpot */}
           <div
-            className="absolute z-10 opacity-0 group-hover/section:opacity-100 transition-opacity"
+            className="opacity-0 group-hover/section:opacity-100 transition-opacity shrink-0 flex items-center"
             title={`Træk for at flytte "${section.label}"`}
             style={{
-              top: '12px',
-              right: '12px',
+              marginTop: '14px',
               cursor: 'grab',
-              padding: '4px 7px',
-              borderRadius: '6px',
-              background: 'var(--surface-2)',
-              border: '1px solid var(--border)',
+              padding: '4px 3px',
+              borderRadius: '4px',
               color: 'var(--muted)',
-              fontSize: '15px',
+              fontSize: '16px',
               lineHeight: 1,
               userSelect: 'none',
             }}
@@ -107,8 +104,9 @@ export default function DraggableSections({
             ⠿
           </div>
 
-          {/* Content wrapper med draggable */}
+          {/* Section content — fylder resten af bredden */}
           <div
+            className="flex-1 min-w-0"
             draggable
             onDragStart={(e) => {
               if (!isDragHandle.current) { e.preventDefault(); return }
