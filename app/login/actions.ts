@@ -32,7 +32,7 @@ export async function login(formData: FormData) {
   }
 
   const token = crypto.randomUUID()
-  await supabase.from('admin_tokens').insert({ name: email, token })
+  await serviceClient.from('admin_tokens').insert({ name: email, token })
 
   const cookieStore = await cookies()
   cookieStore.set('admin_token', token, {
