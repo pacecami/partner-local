@@ -16,7 +16,7 @@ export async function login(formData: FormData) {
     redirect('/login?error=invalid')
   }
 
-  // Brug brugerens eget JWT til at slå profil op — virker altid uanset RLS
+  // Brug brugerens eget JWT til at slå profil op
   const authedClient = createDirectClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -33,17 +33,10 @@ export async function login(formData: FormData) {
     redirect('/login?error=unauthorized')
   }
 
-  // Brug service client til insert (bypasser RLS)
-  const serviceClient = createDirectClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-
-  const token = crypto.randomUUID()
-  await serviceClient.from('admin_tokens').insert({ name: email, token })
-
   const cookieStore = await cookies()
-  cookieStore.set('admin_token', token, {
+
+  // Sæt en simpel admin-cookie — middleware behøver ikke ramme databasen
+  cookieStore.set('is_admin', '1', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
