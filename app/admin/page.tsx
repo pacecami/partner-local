@@ -1,13 +1,15 @@
-import { createClient as createDirectClient } from '@supabase/supabase-js'
-
-function createClient() {
-  return createDirectClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-}
-
 export const dynamic = 'force-dynamic'
+
+async function fetchFromSupabase(path: string) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const res = await fetch(`${url}/rest/v1/${path}`, {
+    headers: { apikey: key!, Authorization: `Bearer ${key!}` },
+    cache: 'no-store',
+  })
+  if (!res.ok) return []
+  return res.json()
+}
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; color: string }> = {
@@ -25,21 +27,9 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default async function AdminPage() {
-  const supabase = await createClient()
-
-  const { data: partners } = await supabase
-    .from('partners')
-    .select('id, name, slug, created_at, subscription_budget, subscription_start, subscription_end')
-    .order('name')
-
-  const { data: campaigns } = await supabase
-    .from('campaigns')
-    .select('id, partner_id, name, status, start_date, end_date, monthly_budget')
-    .order('start_date', { ascending: false })
-
-  const { data: fixedPlacements } = await supabase
-    .from('fixed_placements')
-    .select('id, partner_id')
+  const partners = await fetchFromSupabase('partners?select=id,name,slug,created_at,subscription_budget,subscription_start,subscription_end&order=name')
+  const campaigns = await fetchFromSupabase('campaigns?select=id,partner_id,name,status,start_date,end_date,monthly_budget&order=start_date.desc')
+  const fixedPlacements = await fetchFromSupabase('fixed_placements?select=id,partner_id')
 
   const partnersWithCampaigns = (partners ?? []).map(p => ({
     ...p,
