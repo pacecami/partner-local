@@ -247,16 +247,20 @@ export default async function PartnerDetailPage({
     const graphicFile = formData.get('graphic') as File | null
     let graphic_url: string | null = null
     if (graphicFile && graphicFile.size > 0) {
-      const bytes = await graphicFile.arrayBuffer()
-      const filename = `${Date.now()}-${graphicFile.name}`
-      const { data: uploadData } = await supabase.storage
-        .from('campaign-graphics')
-        .upload(filename, Buffer.from(bytes), { contentType: graphicFile.type || 'image/png' })
-      if (uploadData) {
-        const { data: urlData } = supabase.storage
+      try {
+        const bytes = await graphicFile.arrayBuffer()
+        const filename = `${Date.now()}-${graphicFile.name}`
+        const { data: uploadData } = await supabase.storage
           .from('campaign-graphics')
-          .getPublicUrl(uploadData.path)
-        graphic_url = urlData.publicUrl
+          .upload(filename, Buffer.from(bytes), { contentType: graphicFile.type || 'image/png' })
+        if (uploadData) {
+          const { data: urlData } = supabase.storage
+            .from('campaign-graphics')
+            .getPublicUrl(uploadData.path)
+          graphic_url = urlData.publicUrl
+        }
+      } catch (_) {
+        // upload failed — keep graphic_url as null
       }
     }
     await supabase.from('campaigns').insert({
