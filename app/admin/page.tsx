@@ -31,7 +31,7 @@ export default async function AdminPage() {
   const campaigns = await fetchFromSupabase('campaigns?select=id,partner_id,name,status,start_date,end_date,monthly_budget&order=start_date.desc')
   const fixedPlacements = await fetchFromSupabase('fixed_placements?select=id,partner_id')
 
-  const partnersWithCampaigns = (partners ?? []).map(p => ({
+  const partnersWithCampaigns = (partners ?? []).map((p: any) => ({
     ...p,
     campaigns: (campaigns ?? []).filter(c => c.partner_id === p.id),
     fixedCount: (fixedPlacements ?? []).filter(fp => fp.partner_id === p.id).length,
