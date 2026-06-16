@@ -30,6 +30,8 @@ export default function DraggableSections({
   const [dragIdx, setDragIdx] = useState<number | null>(null)
   const [overIdx, setOverIdx] = useState<number | null>(null)
   const isDragHandle = useRef(false)
+  const dragY = useRef(0)
+  const rafId = useRef<number | null>(null)
 
   useEffect(() => {
     try {
@@ -44,6 +46,37 @@ export default function DraggableSections({
     } catch {}
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storageKey])
+
+  // Spor museposition under drag
+  useEffect(() => {
+    function track(e: DragEvent) { dragY.current = e.clientY }
+    window.addEventListener('dragover', track)
+    return () => window.removeEventListener('dragover', track)
+  }, [])
+
+  function startAutoScroll() {
+    const EDGE = 80    // px fra kant til scrolling begynder
+    const MAX_SPEED = 16
+
+    function tick() {
+      const y = dragY.current
+      const vh = window.innerHeight
+      if (y < EDGE) {
+        window.scrollBy(0, -Math.ceil(MAX_SPEED * (1 - y / EDGE)))
+      } else if (y > vh - EDGE) {
+        window.scrollBy(0, Math.ceil(MAX_SPEED * (1 - (vh - y) / EDGE)))
+      }
+      rafId.current = requestAnimationFrame(tick)
+    }
+    rafId.current = requestAnimationFrame(tick)
+  }
+
+  function stopAutoScroll() {
+    if (rafId.current !== null) {
+      cancelAnimationFrame(rafId.current)
+      rafId.current = null
+    }
+  }
 
   function saveOrder(newOrder: string[]) {
     setOrder(newOrder)
@@ -84,7 +117,7 @@ export default function DraggableSections({
             transition: 'opacity 0.15s',
           }}
         >
-          {/* Drag handle i venstre side — som HubSpot */}
+          {/* Drag handle i venstre side */}
           <div
             className="opacity-0 group-hover/section:opacity-100 transition-opacity shrink-0 flex items-center"
             title={`Træk for at flytte "${section.label}"`}
@@ -104,18 +137,20 @@ export default function DraggableSections({
             ⠿
           </div>
 
-          {/* Section content — fylder resten af bredden */}
+          {/* Section content */}
           <div
             className="flex-1 min-w-0"
             draggable
             onDragStart={(e) => {
               if (!isDragHandle.current) { e.preventDefault(); return }
               setDragIdx(idx)
+              startAutoScroll()
             }}
             onDragEnd={() => {
               isDragHandle.current = false
               setDragIdx(null)
               setOverIdx(null)
+              stopAutoScroll()
             }}
           >
             {section.node}
