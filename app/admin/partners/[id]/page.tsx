@@ -1,6 +1,7 @@
 import React from 'react'
 import { createServiceClient as createClient } from '@/lib/supabase/service'
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import { fetchGA4Events, type GA4EventResult } from '@/lib/ga4'
 import { fetchPacenamiStats, type PacenamiStats } from '@/lib/pacenami'
 import { GA4_PROPS } from '@/app/admin/indstillinger/page'
@@ -269,6 +270,7 @@ export default async function PartnerDetailPage({
       graphic_url,
       subject_pending: formData.get('subject_pending') === 'on',
     })
+    revalidatePath('/admin', 'layout')
     redirect(`/admin/partners/${slug}?saved=true`)
   }
 
@@ -277,6 +279,7 @@ export default async function PartnerDetailPage({
     const supabase = await createClient()
     const campaignId = formData.get('campaign_id') as string
     await supabase.from('campaigns').delete().eq('id', campaignId)
+    revalidatePath('/admin', 'layout')
     redirect(`/admin/partners/${slug}`)
   }
 
