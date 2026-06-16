@@ -3,6 +3,7 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 
 export async function login(formData: FormData) {
   const email    = (formData.get('email') as string).trim().toLowerCase()
@@ -15,7 +16,12 @@ export async function login(formData: FormData) {
     redirect('/login?error=invalid')
   }
 
-  const { data: profile } = await supabase
+  const serviceClient = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
+  const { data: profile } = await serviceClient
     .from('profiles')
     .select('role')
     .eq('id', authData.user.id)
