@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
@@ -43,9 +44,9 @@ export default async function AdminPage() {
           <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>Partnere</h1>
           <p className="text-sm mt-0.5" style={{ color: 'var(--muted)' }}>{partners?.length ?? 0} total</p>
         </div>
-        <a href="/admin/partners/new" className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: 'var(--accent)', color: '#000' }}>
+        <Link href="/admin/partners/new" className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: 'var(--accent)', color: '#000' }}>
           + Ny partner
-        </a>
+        </Link>
       </div>
 
       <div className="grid grid-cols-2 gap-4 mb-8">
@@ -98,7 +99,7 @@ export default async function AdminPage() {
                     <td className="px-6 py-4 text-sm" style={{ color: 'var(--green)' }}>{activeCount}</td>
                     <td className="px-6 py-4 text-sm" style={{ color: 'var(--foreground)' }}>{budget > 0 ? `${budget.toLocaleString('da-DK')} kr` : '—'}</td>
                     <td className="px-6 py-4 text-right">
-                      <a href={`/admin/partners/${p.slug}`} className="text-xs px-3 py-1.5 rounded-lg" style={{ background: 'var(--surface-2)', color: 'var(--foreground)' }}>Åbn</a>
+                      <Link href={`/admin/partners/${p.slug}`} className="text-xs px-3 py-1.5 rounded-lg" style={{ background: 'var(--surface-2)', color: 'var(--foreground)' }}>Åbn</Link>
                     </td>
                   </tr>
                 )
