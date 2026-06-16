@@ -3,7 +3,7 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { createClient as createDirectClient } from '@supabase/supabase-js'
 
 export async function login(formData: FormData) {
   const email    = (formData.get('email') as string).trim().toLowerCase()
@@ -12,16 +12,18 @@ export async function login(formData: FormData) {
   const supabase = await createClient()
   const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password })
 
-  if (authError || !authData.user) {
+  if (authError || !authData.user || !authData.session) {
     redirect('/login?error=invalid')
   }
 
-  const serviceClient = createServiceClient(
+  // Brug brugerens eget JWT til at slå profil op — virker altid uanset RLS
+  const authedClient = createDirectClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { global: { headers: { Authorization: `Bearer ${authData.session.access_token}` } } }
   )
 
-  const { data: profile } = await serviceClient
+  const { data: profile } = await authedClient
     .from('profiles')
     .select('role')
     .eq('id', authData.user.id)
@@ -30,6 +32,12 @@ export async function login(formData: FormData) {
   if (!profile || profile.role !== 'admin') {
     redirect('/login?error=unauthorized')
   }
+
+  // Brug service client til insert (bypasser RLS)
+  const serviceClient = createDirectClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
   const token = crypto.randomUUID()
   await serviceClient.from('admin_tokens').insert({ name: email, token })
