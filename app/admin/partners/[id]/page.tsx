@@ -6,6 +6,7 @@ import { fetchGA4Events, type GA4EventResult } from '@/lib/ga4'
 import { fetchPacenamiStats, type PacenamiStats } from '@/lib/pacenami'
 import { GA4_PROPS } from '@/app/admin/indstillinger/page'
 import CopyLinkBox from '@/components/CopyLinkBox'
+import DraggableSections from '@/components/DraggableSections'
 
 export const dynamic = 'force-dynamic'
 
@@ -351,7 +352,10 @@ export default async function PartnerDetailPage({
       {/* Partner-link */}
       <CopyLinkBox url={`${process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000'}/p/${partner.access_token}`} />
 
+      <DraggableSections storageKey={`partner-sections-${slug}`}>
+
       {/* Abonnementsperioder */}
+      <div data-section-id="abonnement" data-section-label="Abonnementsperioder">
       <section className="rounded-xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
         <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
           <h2 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>Abonnementsperioder</h2>
@@ -468,7 +472,10 @@ export default async function PartnerDetailPage({
         )}
       </section>
 
+      </div>{/* /abonnement */}
+
       {/* Faste placeringer */}
+      <div data-section-id="faste" data-section-label="Faste placeringer">
       <section className="rounded-xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
         <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
           <h2 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>
@@ -560,7 +567,10 @@ export default async function PartnerDetailPage({
         </form>
       </section>
 
-      {/* Campaigns list */}
+      </div>{/* /faste */}
+
+      {/* Kampagner */}
+      <div data-section-id="kampagner" data-section-label="Kampagner">
       <section
         className="rounded-xl overflow-hidden"
         style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
@@ -710,7 +720,10 @@ export default async function PartnerDetailPage({
         )}
       </section>
 
-      {/* Add campaign */}
+      </div>{/* /kampagner */}
+
+      {/* Tilføj kampagne */}
+      <div data-section-id="tilfoej-kampagne" data-section-label="Tilføj kampagne">
       <section className="rounded-xl p-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
         <h2 className="font-semibold text-sm mb-4" style={{ color: 'var(--foreground)' }}>Tilføj kampagne</h2>
         <form action={addCampaign} className="space-y-4" encType="multipart/form-data">
@@ -767,7 +780,10 @@ export default async function PartnerDetailPage({
         </form>
       </section>
 
-      {/* Edit partner */}
+      </div>{/* /tilfoej-kampagne */}
+
+      {/* Partnerinfo */}
+      <div data-section-id="partnerinfo" data-section-label="Partnerinfo">
       <section className="rounded-xl p-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
         <h2 className="font-semibold text-sm mb-4" style={{ color: 'var(--foreground)' }}>Partnerinfo</h2>
         <form action={updatePartner} className="space-y-4">
@@ -795,7 +811,10 @@ export default async function PartnerDetailPage({
         </form>
       </section>
 
+      </div>{/* /partnerinfo */}
+
       {/* GA4 Events */}
+      <div data-section-id="ga4-config" data-section-label="GA4 Events">
       {(() => {
         const allProps = GA4_PROPS.map(({ key, label }, i) => {
           const id = settings[key] ?? ''
@@ -929,8 +948,11 @@ export default async function PartnerDetailPage({
         )
       })()}
 
+      </div>{/* /ga4-config */}
+
       {/* GA4 Stats */}
       {ga4Properties.length > 0 && (
+      <div data-section-id="ga4-stats" data-section-label="GA4 statistik">
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>
@@ -1100,10 +1122,12 @@ export default async function PartnerDetailPage({
             )
           })()}
         </section>
+      </div>
       )}
 
       {/* ── Banner statistik (Pacenami) ── */}
       {pacenamiTotal && (
+      <div data-section-id="banner-stats" data-section-label="Banner statistik">
         <section className="space-y-4">
           <h2 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>
             Banner statistik <span className="font-normal text-xs ml-1" style={{ color: 'var(--muted)' }}>(Pacenami — {monthLabel(selectedMonth)})</span>
@@ -1163,7 +1187,10 @@ export default async function PartnerDetailPage({
             </div>
           )}
         </section>
+      </div>
       )}
+
+      </DraggableSections>
 
     </div>
   )
