@@ -1,5 +1,5 @@
 import React from 'react'
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient as createClient } from '@/lib/supabase/service'
 import { redirect } from 'next/navigation'
 import { fetchGA4Events, type GA4EventResult } from '@/lib/ga4'
 import { fetchPacenamiStats, type PacenamiStats } from '@/lib/pacenami'

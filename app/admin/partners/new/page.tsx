@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient as createClient } from '@/lib/supabase/service'
 import { redirect } from 'next/navigation'
 
 export default function NewPartnerPage() {
