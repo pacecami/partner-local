@@ -7,6 +7,8 @@ import { fetchPacenamiStats, type PacenamiStats } from '@/lib/pacenami'
 import { GA4_PROPS } from '@/app/admin/indstillinger/page'
 import CopyLinkBox from '@/components/CopyLinkBox'
 import DraggableSections from '@/components/DraggableSections'
+import AddPlacementModal from '@/components/AddPlacementModal'
+import AddCampaignModal from '@/components/AddCampaignModal'
 
 export const dynamic = 'force-dynamic'
 
@@ -481,6 +483,7 @@ export default async function PartnerDetailPage({
           <h2 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>
             Faste placeringer ({fixedPlacements?.length ?? 0})
           </h2>
+          <AddPlacementModal action={addFixedPlacement} />
         </div>
 
         {/* Eksisterende */}
@@ -535,36 +538,6 @@ export default async function PartnerDetailPage({
           </div>
         )}
 
-        {/* Tilføj ny */}
-        <form action={addFixedPlacement} className="p-6 space-y-4" encType="multipart/form-data">
-          <p className="text-xs font-semibold" style={{ color: 'var(--muted)' }}>Tilføj fast placering</p>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Navn *</label>
-              <input name="fp_name" required placeholder="fx Forsikring & finansiering — banner" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Site</label>
-              <select name="fp_site" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
-                <option value="">— Vælg site —</option>
-                <option value="Bilhandel">Bilhandel</option>
-                <option value="TjekBil">TjekBil</option>
-                <option value="TjekBilsyn">TjekBilsyn</option>
-              </select>
-            </div>
-            <div className="col-span-2">
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>URL (linker til)</label>
-              <input name="fp_url" type="url" placeholder="https://www.eksempel.dk/side" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
-            </div>
-            <div className="col-span-2">
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Billede (screenshot af placeringen)</label>
-              <input name="fp_image" type="file" accept="image/*" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
-            </div>
-          </div>
-          <div className="flex justify-end">
-            <button type="submit" className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: 'var(--accent)', color: '#000' }}>+ Tilføj placering</button>
-          </div>
-        </form>
       </section>
 
       </div>{/* /faste */}
@@ -579,6 +552,7 @@ export default async function PartnerDetailPage({
           <h2 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>
             Kampagner ({campaigns?.length ?? 0})
           </h2>
+          <AddCampaignModal action={addCampaign} />
         </div>
         {!campaigns || campaigns.length === 0 ? (
           <div className="px-6 py-8 text-center" style={{ color: 'var(--muted)' }}>
@@ -721,66 +695,6 @@ export default async function PartnerDetailPage({
       </section>
 
       </div>{/* /kampagner */}
-
-      {/* Tilføj kampagne */}
-      <div data-section-id="tilfoej-kampagne" data-section-label="Tilføj kampagne">
-      <section className="rounded-xl p-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-        <h2 className="font-semibold text-sm mb-4" style={{ color: 'var(--foreground)' }}>Tilføj kampagne</h2>
-        <form action={addCampaign} className="space-y-4" encType="multipart/form-data">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Kampagnenavn *</label>
-              <input name="name" required placeholder="fx Forårskampagne 2025" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Status</label>
-              <select name="status" defaultValue="planned" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
-                <option value="planned">Planlagt</option>
-                <option value="active">Aktiv</option>
-                <option value="ended">Afsluttet</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Budget/md (kr)</label>
-              <input name="monthly_budget" type="text" inputMode="numeric" placeholder="15.000" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Startdato</label>
-              <input name="start_date" type="date" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Slutdato</label>
-              <input name="end_date" type="date" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
-            </div>
-            <div className="col-span-2">
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Grafik (PNG)</label>
-              <input name="graphic" type="file" accept="image/png,image/jpeg" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
-            </div>
-            <div className="col-span-2">
-              <label className="block text-xs font-medium mb-2" style={{ color: 'var(--muted)' }}>Placeringer</label>
-              <div className="flex flex-wrap gap-2">
-                {['Inapp', 'Nyhedsbreve', 'Tilbudsmail', 'Banner', 'Facebook'].map(p => (
-                  <label key={p} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs cursor-pointer" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--foreground)' }}>
-                    <input type="checkbox" name="placements" value={p} className="accent-yellow-400" />
-                    {p}
-                  </label>
-                ))}
-              </div>
-            </div>
-            <div className="col-span-2">
-              <label className="flex items-center gap-2 cursor-pointer text-sm" style={{ color: 'var(--foreground)' }}>
-                <input type="checkbox" name="subject_pending" className="accent-yellow-400 w-4 h-4" />
-                <span>Emne ikke fastlagt endnu <span className="text-red-500 font-bold">✱</span></span>
-              </label>
-            </div>
-          </div>
-          <div className="flex justify-end">
-            <button type="submit" className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: 'var(--accent)', color: '#000' }}>+ Tilføj kampagne</button>
-          </div>
-        </form>
-      </section>
-
-      </div>{/* /tilfoej-kampagne */}
 
       {/* Partnerinfo */}
       <div data-section-id="partnerinfo" data-section-label="Partnerinfo">
