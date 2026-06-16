@@ -1,44 +1,33 @@
-'use client'
-
-import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+export const dynamic = 'force-dynamic'
 
-export default function AdminPage() {
-  const [partners, setPartners] = useState<any[]>([])
-  const [campaigns, setCampaigns] = useState<any[]>([])
-  const [fixedPlacements, setFixedPlacements] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+function getServiceClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+}
 
-  useEffect(() => {
-    async function load() {
-      const [p, c, f] = await Promise.all([
-        supabase.from('partners').select('id,name,slug,created_at,subscription_budget,subscription_start,subscription_end').order('name'),
-        supabase.from('campaigns').select('id,partner_id,name,status,start_date,end_date,monthly_budget').order('start_date', { ascending: false }),
-        supabase.from('fixed_placements').select('id,partner_id'),
-      ])
-      setPartners(p.data ?? [])
-      setCampaigns(c.data ?? [])
-      setFixedPlacements(f.data ?? [])
-      setLoading(false)
-    }
-    load()
-  }, [])
+export default async function AdminPage() {
+  const supabase = getServiceClient()
 
-  const partnersWithCampaigns = partners.map((p: any) => ({
+  const [{ data: partners }, { data: campaigns }, { data: fixedPlacements }] = await Promise.all([
+    supabase.from('partners').select('id,name,slug,created_at,subscription_budget,subscription_start,subscription_end').order('name'),
+    supabase.from('campaigns').select('id,partner_id,name,status,start_date,end_date,monthly_budget').order('start_date', { ascending: false }),
+    supabase.from('fixed_placements').select('id,partner_id'),
+  ])
+
+  const partnersWithCampaigns = (partners ?? []).map((p: any) => ({
     ...p,
-    campaigns: campaigns.filter((c: any) => c.partner_id === p.id),
-    fixedCount: fixedPlacements.filter((fp: any) => fp.partner_id === p.id).length,
+    campaigns: (campaigns ?? []).filter((c: any) => c.partner_id === p.id),
+    fixedCount: (fixedPlacements ?? []).filter((fp: any) => fp.partner_id === p.id).length,
   }))
 
-  const activeCampaigns = campaigns.filter((c: any) => c.status === 'active')
-  const totalActive = activeCampaigns.length + fixedPlacements.length
+  const activeCampaigns = (campaigns ?? []).filter((c: any) => c.status === 'active')
+  const totalActive = activeCampaigns.length + (fixedPlacements ?? []).length
   const totalCampaignBudget = activeCampaigns.reduce((sum: number, c: any) => sum + (c.monthly_budget ?? 0), 0)
-  const totalSubBudget = partners.reduce((sum: number, p: any) => {
+  const totalSubBudget = (partners ?? []).reduce((sum: number, p: any) => {
     if (!p.subscription_start || !p.subscription_end || !p.subscription_budget) return sum
     const start = new Date(p.subscription_start)
     const end = new Date(p.subscription_end)
@@ -47,14 +36,12 @@ export default function AdminPage() {
   }, 0)
   const totalBudget = totalCampaignBudget + totalSubBudget
 
-  if (loading) return <div className="max-w-5xl mx-auto pt-8" style={{ color: 'var(--muted)' }}>Indlæser...</div>
-
   return (
     <div className="max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>Partnere</h1>
-          <p className="text-sm mt-0.5" style={{ color: 'var(--muted)' }}>{partners.length} total</p>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--muted)' }}>{partners?.length ?? 0} total</p>
         </div>
         <a href="/admin/partners/new" className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: 'var(--accent)', color: '#000' }}>
           + Ny partner
