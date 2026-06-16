@@ -1,7 +1,34 @@
 'use client'
 
 import { useSearchParams } from 'next/navigation'
+import { useFormStatus } from 'react-dom'
 import { login } from './actions'
+
+function SubmitButton() {
+  const { pending } = useFormStatus()
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      style={{
+        width: '100%',
+        padding: '13px',
+        borderRadius: '8px',
+        background: 'var(--accent)',
+        color: '#000',
+        fontWeight: 700,
+        fontSize: '15px',
+        border: 'none',
+        cursor: pending ? 'not-allowed' : 'pointer',
+        marginTop: '4px',
+        opacity: pending ? 0.75 : 1,
+        transition: 'opacity 0.15s',
+      }}
+    >
+      {pending ? 'Logger ind…' : 'Log ind'}
+    </button>
+  )
+}
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -81,23 +108,7 @@ export default function LoginForm() {
             style={inputStyle}
           />
         </div>
-        <button
-          type="submit"
-          style={{
-            width: '100%',
-            padding: '13px',
-            borderRadius: '8px',
-            background: 'var(--accent)',
-            color: '#000',
-            fontWeight: 700,
-            fontSize: '15px',
-            border: 'none',
-            cursor: 'pointer',
-            marginTop: '4px',
-          }}
-        >
-          Log ind
-        </button>
+        <SubmitButton />
       </form>
 
       <div style={{ textAlign: 'center', marginTop: '20px' }}>
