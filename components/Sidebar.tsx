@@ -119,6 +119,19 @@ export default function Sidebar({ role, partnerName, partners = [] }: SidebarPro
               Opgaver
             </Link>
 
+            {/* Leads */}
+            <Link
+              href="/admin/leads"
+              className="flex items-center gap-2.5 px-3 py-2 mt-0.5 rounded-lg text-sm font-medium transition-colors"
+              style={{
+                background: pathname.startsWith('/admin/leads') ? 'var(--surface-2)' : 'transparent',
+                color: pathname.startsWith('/admin/leads') ? 'var(--foreground)' : 'var(--muted)',
+              }}
+            >
+              <span className="text-xs">📋</span>
+              Leads
+            </Link>
+
           </>
         ) : (
           <Link
