@@ -10,6 +10,7 @@ import DraggableSections from '@/components/DraggableSections'
 import AddPlacementModal from '@/components/AddPlacementModal'
 import AddCampaignModal from '@/components/AddCampaignModal'
 import CampaignsTable from '@/components/CampaignsTable'
+import AddLeadModal from '@/components/AddLeadModal'
 
 export const dynamic = 'force-dynamic'
 
@@ -120,6 +121,12 @@ export default async function PartnerDetailPage({
     .eq('partner_id', partner.id)
     .order('start_date', { ascending: false })
 
+  const { data: leads } = await supabase
+    .from('leads')
+    .select('*')
+    .eq('partner_id', partner.id)
+    .order('month', { ascending: false })
+
   // Vis "Tilføj ny periode"-knap når der er ≤ 2 måneder til udløb
   const latestPeriod = subscriptionPeriods?.[0] ?? null
   const twoMonthsFromNow = new Date()
@@ -156,6 +163,27 @@ export default async function PartnerDetailPage({
         : 0,
     }
   }, null)
+
+  async function addLead(formData: FormData) {
+    'use server'
+    const supabase = await createClient()
+    const name  = (formData.get('lead_name') as string).trim()
+    const month = (formData.get('lead_month') as string).trim()
+    const count = parseInt(formData.get('lead_count') as string, 10)
+    await supabase.from('leads').upsert(
+      { partner_id: partner.id, month, name, count },
+      { onConflict: 'partner_id,month,name' }
+    )
+    redirect(`/admin/partners/${slug}?saved=true`)
+  }
+
+  async function deleteLead(formData: FormData) {
+    'use server'
+    const supabase = await createClient()
+    const leadId = formData.get('lead_id') as string
+    await supabase.from('leads').delete().eq('id', leadId)
+    redirect(`/admin/partners/${slug}`)
+  }
 
   async function updatePartner(formData: FormData) {
     'use server'
@@ -937,6 +965,51 @@ export default async function PartnerDetailPage({
         </section>
       </div>
       )}
+
+      {/* Leads */}
+      <div data-section-id="leads" data-section-label="Leads">
+      <section className="rounded-xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+        <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
+          <h2 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>
+            Leads ({leads?.length ?? 0})
+          </h2>
+          <AddLeadModal action={addLead} />
+        </div>
+
+        {leads && leads.length > 0 ? (
+          <table className="w-full">
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                {['Måned', 'Navn', 'Antal', ''].map(h => (
+                  <th key={h} className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {leads.map((lead, i) => {
+                const [y, m] = lead.month.split('-').map(Number)
+                const label = new Date(y, m - 1, 1).toLocaleDateString('da-DK', { month: 'long', year: 'numeric' })
+                return (
+                  <tr key={lead.id} style={{ borderBottom: i < leads.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                    <td className="px-5 py-3 text-sm capitalize" style={{ color: 'var(--foreground)' }}>{label}</td>
+                    <td className="px-5 py-3 text-sm" style={{ color: 'var(--foreground)' }}>{lead.name}</td>
+                    <td className="px-5 py-3 text-sm font-semibold tabular-nums" style={{ color: 'var(--accent)' }}>{lead.count.toLocaleString('da-DK')}</td>
+                    <td className="px-5 py-3 text-right">
+                      <form action={deleteLead} className="inline">
+                        <input type="hidden" name="lead_id" value={lead.id} />
+                        <button type="submit" className="text-xs px-2 py-1 rounded" style={{ color: '#ef4444', background: 'transparent' }}>Slet</button>
+                      </form>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        ) : (
+          <p className="px-6 py-5 text-sm" style={{ color: 'var(--muted)' }}>Ingen leads registreret endnu.</p>
+        )}
+      </section>
+      </div>
 
       </DraggableSections>
 
