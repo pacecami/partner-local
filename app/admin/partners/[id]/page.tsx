@@ -51,10 +51,10 @@ export default async function PartnerDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ month?: string }>
+  searchParams: Promise<{ month?: string; compare?: string }>
 }) {
   const { id: slug } = await params
-  const { month: monthParam } = await searchParams
+  const { month: monthParam, compare: compareParam } = await searchParams
   const supabase = await createClient()
 
   const now = new Date()
@@ -64,6 +64,21 @@ export default async function PartnerDetailPage({
   const [selYear, selMonth] = selectedMonth.split('-').map(Number)
   const ga4Start = `${selectedMonth}-01`
   const ga4End = `${selectedMonth}-${String(new Date(selYear, selMonth, 0).getDate()).padStart(2, '0')}`
+
+  // Sammenligningsperiode
+  const selectedCompare = compareParam && compareParam >= EARLIEST && compareParam < selectedMonth ? compareParam : null
+  let cmpStart: string | null = null
+  let cmpEnd: string | null = null
+  if (selectedCompare) {
+    const [cmpY, cmpM] = selectedCompare.split('-').map(Number)
+    cmpStart = `${selectedCompare}-01`
+    cmpEnd = `${selectedCompare}-${String(new Date(cmpY, cmpM, 0).getDate()).padStart(2, '0')}`
+  }
+
+  function sameMonthLastYear(ym: string) {
+    const [y, m] = ym.split('-').map(Number)
+    return `${y - 1}-${String(m).padStart(2, '0')}`
+  }
 
   const { data: partner } = await supabase
     .from('partners')
@@ -96,12 +111,22 @@ export default async function PartnerDetailPage({
     }))
     .filter(p => p.id && p.enabled) as { id: string; label: string; events: string | null; aliases: string | null; enabled: boolean }[]
 
-  const ga4Results = await Promise.all(
-    ga4Properties.map(({ id, events }) => {
-      const eventNames = events ? events.split(',').map(e => e.trim()).filter(Boolean) : []
-      return fetchGA4Events(id, eventNames, ga4Start, ga4End).catch((err) => { console.error(`GA4 fejl (${id}):`, err?.message ?? err); return null })
-    })
-  )
+  const [ga4Results, ga4CompareResults] = await Promise.all([
+    Promise.all(
+      ga4Properties.map(({ id, events }) => {
+        const eventNames = events ? events.split(',').map(e => e.trim()).filter(Boolean) : []
+        return fetchGA4Events(id, eventNames, ga4Start, ga4End).catch((err) => { console.error(`GA4 fejl (${id}):`, err?.message ?? err); return null })
+      })
+    ),
+    selectedCompare
+      ? Promise.all(
+          ga4Properties.map(({ id, events }) => {
+            const eventNames = events ? events.split(',').map(e => e.trim()).filter(Boolean) : []
+            return fetchGA4Events(id, eventNames, cmpStart!, cmpEnd!).catch(() => null)
+          })
+        )
+      : Promise.resolve(null),
+  ])
 
   const { data: campaigns } = await supabase
     .from('campaigns')
@@ -138,31 +163,45 @@ export default async function PartnerDetailPage({
     c.pacenami_campaign_id && (c.placements ?? []).includes('Banner')
   )
   const pacenamiResults: Record<string, PacenamiStats | null> = {}
-  await Promise.all(
-    bannerCampaigns.map(async c => {
-      pacenamiResults[c.id] = await fetchPacenamiStats(
-        c.pacenami_campaign_id,
-        ga4Start,
-        ga4End,
-      ).catch(() => null)
-    })
-  )
-  const pacenamiTotal = Object.values(pacenamiResults).reduce<PacenamiStats | null>((acc, s) => {
-    if (!s) return acc
-    if (!acc) return { ...s }
-    return {
-      served:               acc.served + s.served,
-      impressions:          acc.impressions + s.impressions,
-      viewable_impressions: acc.viewable_impressions + s.viewable_impressions,
-      viewability:          acc.impressions + s.impressions > 0
-        ? ((acc.viewable_impressions + s.viewable_impressions) / (acc.impressions + s.impressions)) * 100
-        : 0,
-      clicks: acc.clicks + s.clicks,
-      ctr:    acc.impressions + s.impressions > 0
-        ? ((acc.clicks + s.clicks) / (acc.impressions + s.impressions)) * 100
-        : 0,
-    }
-  }, null)
+  const pacenamiCompareResults: Record<string, PacenamiStats | null> = {}
+  await Promise.all([
+    ...bannerCampaigns.map(async c => {
+      pacenamiResults[c.id] = await fetchPacenamiStats(c.pacenami_campaign_id, ga4Start, ga4End).catch(() => null)
+    }),
+    ...(selectedCompare ? bannerCampaigns.map(async c => {
+      pacenamiCompareResults[c.id] = await fetchPacenamiStats(c.pacenami_campaign_id, cmpStart!, cmpEnd!).catch(() => null)
+    }) : []),
+  ])
+  function sumPacenami(results: Record<string, PacenamiStats | null>): PacenamiStats | null {
+    return Object.values(results).reduce<PacenamiStats | null>((acc, s) => {
+      if (!s) return acc
+      if (!acc) return { ...s }
+      return {
+        served:               acc.served + s.served,
+        impressions:          acc.impressions + s.impressions,
+        viewable_impressions: acc.viewable_impressions + s.viewable_impressions,
+        viewability:          acc.impressions + s.impressions > 0
+          ? ((acc.viewable_impressions + s.viewable_impressions) / (acc.impressions + s.impressions)) * 100
+          : 0,
+        clicks: acc.clicks + s.clicks,
+        ctr:    acc.impressions + s.impressions > 0
+          ? ((acc.clicks + s.clicks) / (acc.impressions + s.impressions)) * 100
+          : 0,
+      }
+    }, null)
+  }
+  const pacenamiTotal = sumPacenami(pacenamiResults)
+  const pacenamiCompareTotal = selectedCompare ? sumPacenami(pacenamiCompareResults) : null
+
+  function pctDelta(current: number, compare: number | undefined | null): string | null {
+    if (!compare || compare === 0) return null
+    const d = ((current - compare) / compare) * 100
+    return (d >= 0 ? '+' : '') + d.toFixed(0) + '%'
+  }
+  function deltaColor(current: number, compare: number | undefined | null): string {
+    if (!compare || compare === 0) return 'var(--muted)'
+    return current >= compare ? '#22c55e' : '#ef4444'
+  }
 
   async function addLead(formData: FormData) {
     'use server'
@@ -734,36 +773,95 @@ export default async function PartnerDetailPage({
             <h2 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>
               GA4 statistik
             </h2>
-            <div className="flex items-center gap-2">
-              {selectedMonth > EARLIEST ? (
-                <a
-                  href={`?month=${prevMonth(selectedMonth)}`}
-                  className="px-3 py-1.5 rounded-lg text-xs"
-                  style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
-                >
-                  ← Forrige
-                </a>
-              ) : (
-                <span className="px-3 py-1.5 rounded-lg text-xs" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--muted)', opacity: 0.4 }}>← Forrige</span>
-              )}
-              <span className="text-sm font-medium capitalize px-2" style={{ color: 'var(--foreground)', minWidth: '130px', textAlign: 'center' }}>
-                {monthLabel(selectedMonth)}
-              </span>
-              {selectedMonth < currentYM ? (
-                <a
-                  href={`?month=${nextMonth(selectedMonth)}`}
-                  className="px-3 py-1.5 rounded-lg text-xs"
-                  style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
-                >
-                  Næste →
-                </a>
-              ) : (
-                <span className="px-3 py-1.5 rounded-lg text-xs" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--muted)', opacity: 0.4 }}>Næste →</span>
-              )}
+            <div className="flex items-center gap-4 flex-wrap">
+              {/* Månedsnavigation */}
+              <div className="flex items-center gap-2">
+                {selectedMonth > EARLIEST ? (
+                  <a
+                    href={`?month=${prevMonth(selectedMonth)}${selectedCompare ? `&compare=${prevMonth(selectedCompare)}` : ''}`}
+                    className="px-3 py-1.5 rounded-lg text-xs"
+                    style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
+                  >
+                    ← Forrige
+                  </a>
+                ) : (
+                  <span className="px-3 py-1.5 rounded-lg text-xs" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--muted)', opacity: 0.4 }}>← Forrige</span>
+                )}
+                <span className="text-sm font-medium capitalize px-2" style={{ color: 'var(--foreground)', minWidth: '130px', textAlign: 'center' }}>
+                  {monthLabel(selectedMonth)}
+                </span>
+                {selectedMonth < currentYM ? (
+                  <a
+                    href={`?month=${nextMonth(selectedMonth)}${selectedCompare ? `&compare=${nextMonth(selectedCompare)}` : ''}`}
+                    className="px-3 py-1.5 rounded-lg text-xs"
+                    style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
+                  >
+                    Næste →
+                  </a>
+                ) : (
+                  <span className="px-3 py-1.5 rounded-lg text-xs" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--muted)', opacity: 0.4 }}>Næste →</span>
+                )}
+              </div>
+
+              {/* Sammenligningsvælger */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs" style={{ color: 'var(--muted)' }}>Sammenlign:</span>
+                {(() => {
+                  const cmpYear = sameMonthLastYear(selectedMonth)
+                  const cmpPrev = prevMonth(selectedMonth)
+                  const options = [
+                    { label: 'Ingen', value: null },
+                    { label: `Forrige år (${monthLabel(cmpYear).split(' ')[0]} ${cmpYear.split('-')[0]})`, value: cmpYear },
+                    { label: `Forrige md.`, value: cmpPrev },
+                  ]
+                  return options.map(opt => {
+                    const active = opt.value === selectedCompare
+                    return (
+                      <a
+                        key={opt.label}
+                        href={opt.value ? `?month=${selectedMonth}&compare=${opt.value}` : `?month=${selectedMonth}`}
+                        className="px-2.5 py-1 rounded-lg text-xs"
+                        style={{
+                          background: active ? 'var(--accent)' : 'var(--surface-2)',
+                          border: '1px solid var(--border)',
+                          color: active ? '#000' : 'var(--muted)',
+                          fontWeight: active ? 600 : 400,
+                        }}
+                      >
+                        {opt.label}
+                      </a>
+                    )
+                  })
+                })()}
+              </div>
             </div>
           </div>
           {/* Samlet tabel — samme format som partnersiden */}
           {(() => {
+            function buildTotals(results: (typeof ga4Results)) {
+              const perProp: Record<string, Record<string, number>> = {}
+              ga4Properties.forEach(({ label: propLabel, aliases, events: eventsStr }, i) => {
+                const events = results[i]
+                if (!events || events.length === 0) return
+                const aliasList = aliases ? aliases.split(',').map((a: string) => a.trim()) : []
+                const eventList = (eventsStr ?? '').split(',').map((e: string) => e.trim())
+                const aliasMap = Object.fromEntries(eventList.map((e: string, idx: number) => [e, aliasList[idx] || e]))
+                if (!perProp[propLabel]) perProp[propLabel] = {}
+                events.forEach(({ eventName, count }: { eventName: string; count: number }) => {
+                  const raw = aliasMap[eventName] || eventName
+                  const alias = raw.replace(/\s+(iOS|Android)$/i, '').trim()
+                  perProp[propLabel][alias] = (perProp[propLabel][alias] ?? 0) + count
+                })
+              })
+              const totals: Record<string, number> = {}
+              Object.values(perProp).forEach(propTotals => {
+                Object.entries(propTotals).forEach(([alias, count]) => {
+                  totals[alias] = (totals[alias] ?? 0) + count
+                })
+              })
+              return { perProp, totals }
+            }
+
             // Byg per-property totals: { propLabel -> { encodedAlias -> count } }
             const perProp: Record<string, Record<string, number>> = {}
             ga4Properties.forEach(({ label: propLabel, aliases, events: eventsStr }, i) => {
@@ -779,6 +877,8 @@ export default async function PartnerDetailPage({
                 perProp[propLabel][alias] = (perProp[propLabel][alias] ?? 0) + count
               })
             })
+
+            const cmpTotals = ga4CompareResults ? buildTotals(ga4CompareResults).totals : null
 
             // Samlet total på tværs af alle properties
             const totals: Record<string, number> = {}
@@ -806,7 +906,7 @@ export default async function PartnerDetailPage({
             }
 
             const paired = pairEvents(totals)
-            const propLabels = Object.keys(perProp)
+            const cmpPaired = cmpTotals ? pairEvents(cmpTotals) : null
 
             // Per-property breakdown per gruppe
             const breakdown: Record<string, { label: string; visninger: number | null; kliks: number | null }[]> = {}
@@ -820,8 +920,10 @@ export default async function PartnerDetailPage({
 
             const totalVis  = Object.values(paired).reduce((s, p) => s + (p.visninger ?? 0), 0)
             const totalKlik = Object.values(paired).reduce((s, p) => s + (p.kliks ?? 0), 0)
+            const cmpTotalVis  = cmpPaired ? Object.values(cmpPaired).reduce((s, p) => s + (p.visninger ?? 0), 0) : null
+            const cmpTotalKlik = cmpPaired ? Object.values(cmpPaired).reduce((s, p) => s + (p.kliks ?? 0), 0) : null
 
-            const colW = { vis: '80px', klik: '60px', rate: '60px' }
+            const colW = { vis: '90px', klik: '70px', rate: '70px' }
 
             return (
               <div className="rounded-xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
@@ -840,6 +942,7 @@ export default async function PartnerDetailPage({
                   {Object.entries(paired).map(([gruppe, { visninger, kliks }]) => {
                     const klikrate = visninger && kliks && visninger > 0
                       ? ((kliks / visninger) * 100).toFixed(2) : null
+                    const cmp = cmpPaired?.[gruppe]
                     const subs = breakdown[gruppe] ?? []
                     const showSubs = subs.length > 1
 
@@ -849,12 +952,26 @@ export default async function PartnerDetailPage({
                         <div className="flex items-center justify-between py-3">
                           <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>{gruppe}</span>
                           <div className="flex items-center gap-4 tabular-nums">
-                            <span className="text-sm font-bold text-right" style={{ minWidth: colW.vis, color: 'var(--foreground)' }}>
-                              {visninger != null ? visninger.toLocaleString('da-DK') : '—'}
-                            </span>
-                            <span className="text-sm font-bold text-right" style={{ minWidth: colW.klik, color: 'var(--foreground)' }}>
-                              {kliks != null ? kliks.toLocaleString('da-DK') : '—'}
-                            </span>
+                            <div className="text-right" style={{ minWidth: colW.vis }}>
+                              <span className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>
+                                {visninger != null ? visninger.toLocaleString('da-DK') : '—'}
+                              </span>
+                              {cmpPaired && cmp && visninger != null && (
+                                <div className="text-xs" style={{ color: deltaColor(visninger, cmp.visninger) }}>
+                                  {pctDelta(visninger, cmp.visninger)} · {cmp.visninger?.toLocaleString('da-DK') ?? '—'}
+                                </div>
+                              )}
+                            </div>
+                            <div className="text-right" style={{ minWidth: colW.klik }}>
+                              <span className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>
+                                {kliks != null ? kliks.toLocaleString('da-DK') : '—'}
+                              </span>
+                              {cmpPaired && cmp && kliks != null && (
+                                <div className="text-xs" style={{ color: deltaColor(kliks, cmp.kliks) }}>
+                                  {pctDelta(kliks, cmp.kliks)} · {cmp.kliks?.toLocaleString('da-DK') ?? '—'}
+                                </div>
+                              )}
+                            </div>
                             <span className="text-sm font-bold text-right" style={{ minWidth: colW.rate, color: klikrate ? 'var(--accent)' : 'var(--muted)' }}>
                               {klikrate ? `${klikrate}%` : '—'}
                             </span>
@@ -887,8 +1004,22 @@ export default async function PartnerDetailPage({
                 <div className="px-5 py-3 flex items-center justify-between border-t" style={{ borderColor: 'var(--border)', background: 'var(--surface-2)' }}>
                   <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Total</span>
                   <div className="flex items-center gap-4 tabular-nums">
-                    <span className="text-sm font-bold text-right" style={{ minWidth: colW.vis, color: 'var(--foreground)' }}>{totalVis.toLocaleString('da-DK')}</span>
-                    <span className="text-sm font-bold text-right" style={{ minWidth: colW.klik, color: 'var(--foreground)' }}>{totalKlik.toLocaleString('da-DK')}</span>
+                    <div className="text-right" style={{ minWidth: colW.vis }}>
+                      <span className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>{totalVis.toLocaleString('da-DK')}</span>
+                      {cmpTotalVis != null && (
+                        <div className="text-xs" style={{ color: deltaColor(totalVis, cmpTotalVis) }}>
+                          {pctDelta(totalVis, cmpTotalVis)} · {cmpTotalVis.toLocaleString('da-DK')}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-right" style={{ minWidth: colW.klik }}>
+                      <span className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>{totalKlik.toLocaleString('da-DK')}</span>
+                      {cmpTotalKlik != null && (
+                        <div className="text-xs" style={{ color: deltaColor(totalKlik, cmpTotalKlik) }}>
+                          {pctDelta(totalKlik, cmpTotalKlik)} · {cmpTotalKlik.toLocaleString('da-DK')}
+                        </div>
+                      )}
+                    </div>
                     <span className="text-sm font-bold text-right" style={{ minWidth: colW.rate, color: 'var(--accent)' }}>
                       {totalVis > 0 ? `${((totalKlik / totalVis) * 100).toFixed(2)}%` : '—'}
                     </span>
@@ -911,13 +1042,13 @@ export default async function PartnerDetailPage({
 
           <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
             {[
-              { label: 'Served',              value: pacenamiTotal.served.toLocaleString('da-DK'),               accent: false },
-              { label: 'Impressions',         value: pacenamiTotal.impressions.toLocaleString('da-DK'),          accent: true  },
-              { label: 'Viewable Impr.',      value: pacenamiTotal.viewable_impressions.toLocaleString('da-DK'), accent: false },
-              { label: 'Viewability',         value: `${pacenamiTotal.viewability.toFixed(2)}%`,                 accent: true  },
-              { label: 'Kliks',               value: pacenamiTotal.clicks.toLocaleString('da-DK'),              accent: false },
-              { label: 'CTR',                 value: `${pacenamiTotal.ctr.toFixed(2)}%`,                        accent: true  },
-            ].map(({ label, value, accent }) => (
+              { label: 'Served',         cur: pacenamiTotal.served,               cmp: pacenamiCompareTotal?.served,               fmt: (v: number) => v.toLocaleString('da-DK'),      accent: false },
+              { label: 'Impressions',    cur: pacenamiTotal.impressions,           cmp: pacenamiCompareTotal?.impressions,           fmt: (v: number) => v.toLocaleString('da-DK'),      accent: true  },
+              { label: 'Viewable Impr.', cur: pacenamiTotal.viewable_impressions,  cmp: pacenamiCompareTotal?.viewable_impressions,  fmt: (v: number) => v.toLocaleString('da-DK'),      accent: false },
+              { label: 'Viewability',    cur: pacenamiTotal.viewability,           cmp: pacenamiCompareTotal?.viewability,           fmt: (v: number) => `${v.toFixed(2)}%`,             accent: true  },
+              { label: 'Kliks',          cur: pacenamiTotal.clicks,               cmp: pacenamiCompareTotal?.clicks,               fmt: (v: number) => v.toLocaleString('da-DK'),      accent: false },
+              { label: 'CTR',            cur: pacenamiTotal.ctr,                  cmp: pacenamiCompareTotal?.ctr,                  fmt: (v: number) => `${v.toFixed(2)}%`,             accent: true  },
+            ].map(({ label, cur, cmp, fmt, accent }) => (
               <div
                 key={label}
                 className="rounded-xl p-4 flex flex-col gap-1"
@@ -925,8 +1056,13 @@ export default async function PartnerDetailPage({
               >
                 <p className="text-xs uppercase tracking-wider" style={{ color: 'var(--muted)' }}>{label}</p>
                 <p className="text-2xl font-bold tabular-nums" style={{ color: accent ? 'var(--accent)' : 'var(--foreground)' }}>
-                  {value}
+                  {fmt(cur)}
                 </p>
+                {selectedCompare && cmp != null && (
+                  <p className="text-xs tabular-nums" style={{ color: deltaColor(cur, cmp) }}>
+                    {pctDelta(cur, cmp)} · {fmt(cmp)}
+                  </p>
+                )}
               </div>
             ))}
           </div>

@@ -7,10 +7,21 @@ interface StatRowProps {
   visninger: number | null
   kliks: number | null
   imageUrl?: string | null
-  sub?: boolean // mindre rækker (per-property breakdown)
+  sub?: boolean
+  cmpVisninger?: number | null
+  cmpKliks?: number | null
 }
 
-export default function StatRow({ label, visninger, kliks, imageUrl, sub = false }: StatRowProps) {
+export default function StatRow({ label, visninger, kliks, imageUrl, sub = false, cmpVisninger, cmpKliks }: StatRowProps) {
+  function pctDelta(cur: number, cmp: number | null | undefined) {
+    if (!cmp || cmp === 0) return null
+    const d = ((cur - cmp) / cmp) * 100
+    return (d >= 0 ? '+' : '') + d.toFixed(0) + '%'
+  }
+  function deltaColor(cur: number, cmp: number | null | undefined) {
+    if (!cmp || cmp === 0) return 'var(--muted)'
+    return cur >= cmp ? '#22c55e' : '#ef4444'
+  }
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null)
   const rowRef = useRef<HTMLDivElement>(null)
 
@@ -89,6 +100,11 @@ export default function StatRow({ label, visninger, kliks, imageUrl, sub = false
               <p style={{ fontSize: sub ? '12px' : '14px', fontWeight: 700, color: sub ? 'var(--muted)' : 'var(--foreground)', margin: 0 }}>
                 {visninger.toLocaleString('da-DK')}
               </p>
+              {!sub && cmpVisninger != null && (
+                <p style={{ fontSize: '11px', margin: 0, color: deltaColor(visninger, cmpVisninger) }}>
+                  {pctDelta(visninger, cmpVisninger)} · {cmpVisninger.toLocaleString('da-DK')}
+                </p>
+              )}
             </div>
           )}
           {kliks !== null && (
@@ -97,6 +113,11 @@ export default function StatRow({ label, visninger, kliks, imageUrl, sub = false
               <p style={{ fontSize: sub ? '12px' : '14px', fontWeight: 700, color: sub ? 'var(--muted)' : 'var(--foreground)', margin: 0 }}>
                 {kliks.toLocaleString('da-DK')}
               </p>
+              {!sub && cmpKliks != null && (
+                <p style={{ fontSize: '11px', margin: 0, color: deltaColor(kliks, cmpKliks) }}>
+                  {pctDelta(kliks, cmpKliks)} · {cmpKliks.toLocaleString('da-DK')}
+                </p>
+              )}
             </div>
           )}
           {klikrate !== null && (
