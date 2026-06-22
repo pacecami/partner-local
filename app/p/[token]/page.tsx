@@ -6,7 +6,6 @@ import { GA4_PROPS } from '@/app/admin/indstillinger/page'
 import PlacementLightbox from '@/components/PlacementLightbox'
 import CampaignsTable from '@/components/CampaignsTable'
 import DateRangePicker from '@/components/DateRangePicker'
-import EventImageRow from '@/components/EventImageRow'
 
 export const dynamic = 'force-dynamic'
 
@@ -262,29 +261,21 @@ export default async function PartnerTokenPage({
                   <div key={id} className="rounded-xl p-5" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
                     <p className="text-xs font-semibold mb-4" style={{ color: 'var(--foreground)' }}>{label}</p>
                     {events && events.length > 0 ? (
-                      <div>
+                      <div className="space-y-2">
                         {events.map(({ eventName, count }) => {
-                          const alias = aliasMap[eventName] || eventName
                           const cmpCount = cmpMap[eventName] ?? null
-                          // Match alias group (before " > ") to a fixed placement image
-                          const group = alias.includes(' > ') ? alias.slice(0, alias.indexOf(' > ')).trim() : alias
-                          const placement = (fixedPlacements ?? []).find(fp =>
-                            fp.name.toLowerCase() === group.toLowerCase() ||
-                            group.toLowerCase().includes(fp.name.toLowerCase()) ||
-                            fp.name.toLowerCase().includes(group.toLowerCase())
-                          )
-                          const delta = selectedCompare && cmpCount != null
-                            ? `${pctDelta(count, cmpCount)} · ${cmpCount.toLocaleString('da-DK')}`
-                            : undefined
                           return (
-                            <EventImageRow
-                              key={eventName}
-                              label={alias}
-                              count={count}
-                              imageUrl={placement?.image_url ?? null}
-                              delta={delta}
-                              deltaColor={cmpCount != null ? deltaColor(count, cmpCount) : undefined}
-                            />
+                            <div key={eventName} className="flex items-center justify-between py-2 border-b last:border-0" style={{ borderColor: 'var(--border)' }}>
+                              <span className="text-sm" style={{ color: 'var(--foreground)' }}>{aliasMap[eventName] || eventName}</span>
+                              <div className="text-right">
+                                <span className="text-sm font-bold tabular-nums" style={{ color: 'var(--accent)' }}>{count.toLocaleString('da-DK')}</span>
+                                {selectedCompare && cmpCount != null && (
+                                  <p className="text-xs tabular-nums" style={{ color: deltaColor(count, cmpCount) }}>
+                                    {pctDelta(count, cmpCount)} · {cmpCount.toLocaleString('da-DK')}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
                           )
                         })}
                       </div>
