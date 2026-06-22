@@ -68,9 +68,10 @@ export default async function PartnerDetailPage({
     partner.ga4_prop_2_enabled,
     partner.ga4_prop_3_enabled,
     partner.ga4_prop_4_enabled,
+    partner.ga4_prop_5_enabled,
   ]
-  const partnerEvents  = [partner.ga4_events_1,  partner.ga4_events_2,  partner.ga4_events_3,  partner.ga4_events_4]
-  const partnerAliases = [partner.ga4_aliases_1, partner.ga4_aliases_2, partner.ga4_aliases_3, partner.ga4_aliases_4]
+  const partnerEvents  = [partner.ga4_events_1,  partner.ga4_events_2,  partner.ga4_events_3,  partner.ga4_events_4,  partner.ga4_events_5]
+  const partnerAliases = [partner.ga4_aliases_1, partner.ga4_aliases_2, partner.ga4_aliases_3, partner.ga4_aliases_4, partner.ga4_aliases_5]
 
   const ga4Properties = GA4_PROPS
     .map(({ key, label }, i) => ({
@@ -257,12 +258,14 @@ export default async function PartnerDetailPage({
     const p2 = parsePairs('ga4_event_2', 'ga4_alias_2', 'ga4_group_2')
     const p3 = parsePairs('ga4_event_3', 'ga4_alias_3', 'ga4_group_3')
     const p4 = parsePairs('ga4_event_4', 'ga4_alias_4', 'ga4_group_4')
+    const p5 = parsePairs('ga4_event_5', 'ga4_alias_5', 'ga4_group_5')
 
     await supabase.from('partners').update({
       ga4_prop_1_enabled: formData.get('ga4_prop_1_enabled') === 'on',
       ga4_prop_2_enabled: formData.get('ga4_prop_2_enabled') === 'on',
       ga4_prop_3_enabled: formData.get('ga4_prop_3_enabled') === 'on',
       ga4_prop_4_enabled: formData.get('ga4_prop_4_enabled') === 'on',
+      ga4_prop_5_enabled: formData.get('ga4_prop_5_enabled') === 'on',
       ga4_events_1:  p1.length ? p1.map(p => p.e).join(',') : null,
       ga4_aliases_1: p1.length ? p1.map(p => p.a).join(',') : null,
       ga4_events_2:  p2.length ? p2.map(p => p.e).join(',') : null,
@@ -271,6 +274,8 @@ export default async function PartnerDetailPage({
       ga4_aliases_3: p3.length ? p3.map(p => p.a).join(',') : null,
       ga4_events_4:  p4.length ? p4.map(p => p.e).join(',') : null,
       ga4_aliases_4: p4.length ? p4.map(p => p.a).join(',') : null,
+      ga4_events_5:  p5.length ? p5.map(p => p.e).join(',') : null,
+      ga4_aliases_5: p5.length ? p5.map(p => p.a).join(',') : null,
     }).eq('id', partner.id)
 
     redirect(`/admin/partners/${slug}?saved=true`)

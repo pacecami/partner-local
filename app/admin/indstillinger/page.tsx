@@ -10,6 +10,7 @@ export const GA4_PROPS = [
   { key: 'ga4_prop_2_id', label: 'TjekBil app' },
   { key: 'ga4_prop_3_id', label: 'Bilhandel' },
   { key: 'ga4_prop_4_id', label: 'Tjekbilsyn' },
+  { key: 'ga4_prop_5_id', label: 'Bilhandel web + app' },
 ] as const
 
 export default async function IndstillingerPage() {
