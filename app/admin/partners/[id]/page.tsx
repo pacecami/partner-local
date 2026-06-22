@@ -99,7 +99,7 @@ export default async function PartnerDetailPage({
   const ga4Results = await Promise.all(
     ga4Properties.map(({ id, events }) => {
       const eventNames = events ? events.split(',').map(e => e.trim()).filter(Boolean) : []
-      return fetchGA4Events(id, eventNames, ga4Start, ga4End).catch(() => null)
+      return fetchGA4Events(id, eventNames, ga4Start, ga4End).catch((err) => { console.error(`GA4 fejl (${id}):`, err?.message ?? err); return null })
     })
   )
 
