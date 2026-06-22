@@ -66,7 +66,7 @@ export default async function PartnerDetailPage({
   const ga4End = `${selectedMonth}-${String(new Date(selYear, selMonth, 0).getDate()).padStart(2, '0')}`
 
   // Sammenligningsperiode
-  const selectedCompare = compareParam && compareParam >= EARLIEST && compareParam < selectedMonth ? compareParam : null
+  const selectedCompare = compareParam && compareParam < selectedMonth ? compareParam : null
   let cmpStart: string | null = null
   let cmpEnd: string | null = null
   if (selectedCompare) {
@@ -835,6 +835,15 @@ export default async function PartnerDetailPage({
                 })()}
               </div>
             </div>
+            {selectedCompare && (
+              <div className="flex items-center gap-2 text-xs px-1" style={{ color: 'var(--muted)' }}>
+                <span className="inline-block w-3 h-0.5 rounded" style={{ background: 'var(--accent)', opacity: 0.5 }} />
+                <span className="capitalize font-medium" style={{ color: 'var(--foreground)' }}>{monthLabel(selectedMonth)}</span>
+                <span>vs.</span>
+                <span className="inline-block w-3 h-0.5 rounded border" style={{ borderColor: 'var(--muted)', borderStyle: 'dashed' }} />
+                <span className="capitalize font-medium">{monthLabel(selectedCompare)}</span>
+              </div>
+            )}
           </div>
           {/* Samlet tabel — samme format som partnersiden */}
           {(() => {

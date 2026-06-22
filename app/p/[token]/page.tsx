@@ -44,7 +44,7 @@ export default async function PartnerTokenPage({
   const ga4Start = `${selectedMonth}-01`
   const ga4End = `${selectedMonth}-${String(new Date(selYear, selMonth, 0).getDate()).padStart(2, '0')}`
 
-  const selectedCompare = compareParam && compareParam >= EARLIEST && compareParam < selectedMonth ? compareParam : null
+  const selectedCompare = compareParam && compareParam < selectedMonth ? compareParam : null
   let cmpStart: string | null = null
   let cmpEnd: string | null = null
   if (selectedCompare) {
