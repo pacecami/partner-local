@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const { createClient } = await import('@supabase/supabase-js')
-    const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+    const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
     const { data: settingRow } = await sb.from('settings').select('value').eq('key', 'google_service_account_json').single()
     const raw = settingRow?.value ?? process.env.GOOGLE_SERVICE_ACCOUNT_JSON
     if (!raw) return NextResponse.json({ error: 'Ingen service account JSON fundet' }, { status: 500 })
