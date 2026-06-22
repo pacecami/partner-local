@@ -9,7 +9,12 @@ export async function GET(req: NextRequest) {
   const eventName  = searchParams.get('event') ?? ''
 
   try {
-    const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON ?? '{}')
+    const { createClient } = await import('@supabase/supabase-js')
+    const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+    const { data: settingRow } = await sb.from('settings').select('value').eq('key', 'google_service_account_json').single()
+    const raw = settingRow?.value ?? process.env.GOOGLE_SERVICE_ACCOUNT_JSON
+    if (!raw) return NextResponse.json({ error: 'Ingen service account JSON fundet' }, { status: 500 })
+    const credentials = JSON.parse(raw)
     const client = new BetaAnalyticsDataClient({ credentials })
 
     const [response] = await client.runReport({
