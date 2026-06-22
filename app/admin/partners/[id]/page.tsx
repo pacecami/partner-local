@@ -11,6 +11,7 @@ import AddPlacementModal from '@/components/AddPlacementModal'
 import AddCampaignModal from '@/components/AddCampaignModal'
 import CampaignsTable from '@/components/CampaignsTable'
 import AddLeadModal from '@/components/AddLeadModal'
+import DateRangePicker, { formatRange } from '@/components/DateRangePicker'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,56 +30,25 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
-function monthLabel(ym: string) {
-  const [y, m] = ym.split('-').map(Number)
-  return new Date(y, m - 1, 1).toLocaleDateString('da-DK', { month: 'long', year: 'numeric' })
-}
-
-function prevMonth(ym: string) {
-  const [y, m] = ym.split('-').map(Number)
-  const d = new Date(y, m - 2, 1)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-}
-
-function nextMonth(ym: string) {
-  const [y, m] = ym.split('-').map(Number)
-  const d = new Date(y, m, 1)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-}
-
 export default async function PartnerDetailPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ month?: string; compare?: string }>
+  searchParams: Promise<{ start?: string; end?: string; cmpStart?: string; cmpEnd?: string }>
 }) {
   const { id: slug } = await params
-  const { month: monthParam, compare: compareParam } = await searchParams
+  const { start: startParam, end: endParam, cmpStart: cmpStartParam, cmpEnd: cmpEndParam } = await searchParams
   const supabase = await createClient()
 
   const now = new Date()
-  const currentYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-  const EARLIEST = '2026-01'
-  const selectedMonth = monthParam && monthParam >= EARLIEST && monthParam <= currentYM ? monthParam : currentYM
-  const [selYear, selMonth] = selectedMonth.split('-').map(Number)
-  const ga4Start = `${selectedMonth}-01`
-  const ga4End = `${selectedMonth}-${String(new Date(selYear, selMonth, 0).getDate()).padStart(2, '0')}`
-
-  // Sammenligningsperiode
-  const selectedCompare = compareParam && compareParam < selectedMonth ? compareParam : null
-  let cmpStart: string | null = null
-  let cmpEnd: string | null = null
-  if (selectedCompare) {
-    const [cmpY, cmpM] = selectedCompare.split('-').map(Number)
-    cmpStart = `${selectedCompare}-01`
-    cmpEnd = `${selectedCompare}-${String(new Date(cmpY, cmpM, 0).getDate()).padStart(2, '0')}`
-  }
-
-  function sameMonthLastYear(ym: string) {
-    const [y, m] = ym.split('-').map(Number)
-    return `${y - 1}-${String(m).padStart(2, '0')}`
-  }
+  const thisMonthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+  const thisMonthEnd   = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()).padStart(2, '0')}`
+  const ga4Start = startParam ?? thisMonthStart
+  const ga4End   = endParam   ?? thisMonthEnd
+  const cmpStart: string | null = (cmpStartParam && cmpEndParam) ? cmpStartParam : null
+  const cmpEnd:   string | null = (cmpStartParam && cmpEndParam) ? cmpEndParam   : null
+  const selectedCompare = !!(cmpStart && cmpEnd)
 
   const { data: partner } = await supabase
     .from('partners')
@@ -411,7 +381,7 @@ export default async function PartnerDetailPage({
           </h1>
         </div>
         <a
-          href={`/partner/${slug}`}
+          href={`/p/${partner.access_token}`}
           className="px-4 py-2 rounded-lg text-sm font-semibold"
           style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
         >
@@ -773,77 +743,7 @@ export default async function PartnerDetailPage({
             <h2 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>
               GA4 statistik
             </h2>
-            <div className="flex items-center gap-4 flex-wrap">
-              {/* Månedsnavigation */}
-              <div className="flex items-center gap-2">
-                {selectedMonth > EARLIEST ? (
-                  <a
-                    href={`?month=${prevMonth(selectedMonth)}${selectedCompare ? `&compare=${prevMonth(selectedCompare)}` : ''}`}
-                    className="px-3 py-1.5 rounded-lg text-xs"
-                    style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
-                  >
-                    ← Forrige
-                  </a>
-                ) : (
-                  <span className="px-3 py-1.5 rounded-lg text-xs" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--muted)', opacity: 0.4 }}>← Forrige</span>
-                )}
-                <span className="text-sm font-medium capitalize px-2" style={{ color: 'var(--foreground)', minWidth: '130px', textAlign: 'center' }}>
-                  {monthLabel(selectedMonth)}
-                </span>
-                {selectedMonth < currentYM ? (
-                  <a
-                    href={`?month=${nextMonth(selectedMonth)}${selectedCompare ? `&compare=${nextMonth(selectedCompare)}` : ''}`}
-                    className="px-3 py-1.5 rounded-lg text-xs"
-                    style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
-                  >
-                    Næste →
-                  </a>
-                ) : (
-                  <span className="px-3 py-1.5 rounded-lg text-xs" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--muted)', opacity: 0.4 }}>Næste →</span>
-                )}
-              </div>
-
-              {/* Sammenligningsvælger */}
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs" style={{ color: 'var(--muted)' }}>Sammenlign:</span>
-                {(() => {
-                  const cmpYear = sameMonthLastYear(selectedMonth)
-                  const cmpPrev = prevMonth(selectedMonth)
-                  const options = [
-                    { label: 'Ingen', value: null },
-                    { label: `Forrige år (${monthLabel(cmpYear).split(' ')[0]} ${cmpYear.split('-')[0]})`, value: cmpYear },
-                    { label: `Forrige md.`, value: cmpPrev },
-                  ]
-                  return options.map(opt => {
-                    const active = opt.value === selectedCompare
-                    return (
-                      <a
-                        key={opt.label}
-                        href={opt.value ? `?month=${selectedMonth}&compare=${opt.value}` : `?month=${selectedMonth}`}
-                        className="px-2.5 py-1 rounded-lg text-xs"
-                        style={{
-                          background: active ? 'var(--accent)' : 'var(--surface-2)',
-                          border: '1px solid var(--border)',
-                          color: active ? '#000' : 'var(--muted)',
-                          fontWeight: active ? 600 : 400,
-                        }}
-                      >
-                        {opt.label}
-                      </a>
-                    )
-                  })
-                })()}
-              </div>
-            </div>
-            {selectedCompare && (
-              <div className="flex items-center gap-2 text-xs px-1" style={{ color: 'var(--muted)' }}>
-                <span className="inline-block w-3 h-0.5 rounded" style={{ background: 'var(--accent)', opacity: 0.5 }} />
-                <span className="capitalize font-medium" style={{ color: 'var(--foreground)' }}>{monthLabel(selectedMonth)}</span>
-                <span>vs.</span>
-                <span className="inline-block w-3 h-0.5 rounded border" style={{ borderColor: 'var(--muted)', borderStyle: 'dashed' }} />
-                <span className="capitalize font-medium">{monthLabel(selectedCompare)}</span>
-              </div>
-            )}
+            <DateRangePicker start={ga4Start} end={ga4End} cmpStart={cmpStart} cmpEnd={cmpEnd} />
           </div>
           {/* Samlet tabel — samme format som partnersiden */}
           {(() => {
@@ -932,18 +832,41 @@ export default async function PartnerDetailPage({
             const cmpTotalVis  = cmpPaired ? Object.values(cmpPaired).reduce((s, p) => s + (p.visninger ?? 0), 0) : null
             const cmpTotalKlik = cmpPaired ? Object.values(cmpPaired).reduce((s, p) => s + (p.kliks ?? 0), 0) : null
 
-            const colW = { vis: '90px', klik: '70px', rate: '70px' }
+            // Kolonnebredder afhænger af om sammenligning er aktiv
+            const hasCmp = !!cmpPaired
+            const colVis  = hasCmp ? '80px' : '80px'
+            const colKlik = hasCmp ? '65px' : '65px'
+            const colRate = hasCmp ? '65px' : '65px'
+            const colDelta = '55px'
+            const shortMonth = (ym: string) => {
+              const [y, m] = ym.split('-').map(Number)
+              return new Date(y, m - 1, 1).toLocaleDateString('da-DK', { month: 'short', year: '2-digit' }).replace('.', '')
+            }
 
             return (
               <div className="rounded-xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
                 {/* Kolonneoverskrifter */}
-                <div className="px-5 py-3 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)', background: 'var(--surface-2)' }}>
-                  <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Placering</p>
-                  <div className="flex items-center gap-4 text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>
-                    <span style={{ minWidth: colW.vis, textAlign: 'right' }}>Visninger</span>
-                    <span style={{ minWidth: colW.klik, textAlign: 'right' }}>Kliks</span>
-                    <span style={{ minWidth: colW.rate, textAlign: 'right' }}>Klikrate</span>
+                <div className="px-5 py-3 border-b flex items-center" style={{ borderColor: 'var(--border)', background: 'var(--surface-2)', gap: '0' }}>
+                  <p className="text-xs font-semibold uppercase tracking-wider flex-1" style={{ color: 'var(--muted)' }}>Placering</p>
+                  {/* Visninger */}
+                  <div className="flex items-center" style={{ gap: '4px' }}>
+                    <span className="text-xs font-medium uppercase tracking-wider text-right" style={{ minWidth: colVis, color: 'var(--muted)' }}>
+                      {hasCmp ? shortMonth(ga4Start.slice(0, 7)) : 'Visninger'}
+                    </span>
+                    {hasCmp && <span className="text-xs font-medium uppercase tracking-wider text-right" style={{ minWidth: colVis, color: 'var(--muted)', opacity: 0.6 }}>{shortMonth(cmpStart!.slice(0, 7))}</span>}
+                    {hasCmp && <span className="text-xs font-medium uppercase tracking-wider text-right" style={{ minWidth: colDelta, color: 'var(--muted)' }}>Δ Vis</span>}
                   </div>
+                  <div style={{ width: '16px' }} />
+                  {/* Kliks */}
+                  <div className="flex items-center" style={{ gap: '4px' }}>
+                    <span className="text-xs font-medium uppercase tracking-wider text-right" style={{ minWidth: colKlik, color: 'var(--muted)' }}>
+                      {hasCmp ? shortMonth(ga4Start.slice(0, 7)) : 'Kliks'}
+                    </span>
+                    {hasCmp && <span className="text-xs font-medium uppercase tracking-wider text-right" style={{ minWidth: colKlik, color: 'var(--muted)', opacity: 0.6 }}>{shortMonth(cmpStart!.slice(0, 7))}</span>}
+                    {hasCmp && <span className="text-xs font-medium uppercase tracking-wider text-right" style={{ minWidth: colDelta, color: 'var(--muted)' }}>Δ Kliks</span>}
+                  </div>
+                  <div style={{ width: '16px' }} />
+                  <span className="text-xs font-medium uppercase tracking-wider text-right" style={{ minWidth: colRate, color: 'var(--muted)' }}>Klikrate</span>
                 </div>
 
                 {/* Rækker */}
@@ -957,51 +880,57 @@ export default async function PartnerDetailPage({
 
                     return (
                       <div key={gruppe} className="border-b last:border-0" style={{ borderColor: 'var(--border)' }}>
-                        {/* Hoved-række */}
-                        <div className="flex items-center justify-between py-3">
-                          <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>{gruppe}</span>
-                          <div className="flex items-center gap-4 tabular-nums">
-                            <div className="text-right" style={{ minWidth: colW.vis }}>
-                              <span className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>
-                                {visninger != null ? visninger.toLocaleString('da-DK') : '—'}
-                              </span>
-                              {cmpPaired && cmp && visninger != null && (
-                                <div className="text-xs" style={{ color: deltaColor(visninger, cmp.visninger) }}>
-                                  {pctDelta(visninger, cmp.visninger)} · {cmp.visninger?.toLocaleString('da-DK') ?? '—'}
-                                </div>
-                              )}
-                            </div>
-                            <div className="text-right" style={{ minWidth: colW.klik }}>
-                              <span className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>
-                                {kliks != null ? kliks.toLocaleString('da-DK') : '—'}
-                              </span>
-                              {cmpPaired && cmp && kliks != null && (
-                                <div className="text-xs" style={{ color: deltaColor(kliks, cmp.kliks) }}>
-                                  {pctDelta(kliks, cmp.kliks)} · {cmp.kliks?.toLocaleString('da-DK') ?? '—'}
-                                </div>
-                              )}
-                            </div>
-                            <span className="text-sm font-bold text-right" style={{ minWidth: colW.rate, color: klikrate ? 'var(--accent)' : 'var(--muted)' }}>
-                              {klikrate ? `${klikrate}%` : '—'}
+                        <div className="flex items-center py-3" style={{ gap: '0' }}>
+                          <span className="text-sm font-medium flex-1" style={{ color: 'var(--foreground)' }}>{gruppe}</span>
+                          {/* Visninger */}
+                          <div className="flex items-center tabular-nums" style={{ gap: '4px' }}>
+                            <span className="text-sm font-bold text-right" style={{ minWidth: colVis, color: 'var(--foreground)' }}>
+                              {visninger != null ? visninger.toLocaleString('da-DK') : '—'}
                             </span>
+                            {hasCmp && <span className="text-sm text-right" style={{ minWidth: colVis, color: 'var(--muted)' }}>
+                              {cmp?.visninger != null ? cmp.visninger.toLocaleString('da-DK') : '—'}
+                            </span>}
+                            {hasCmp && <span className="text-xs font-semibold text-right" style={{ minWidth: colDelta, color: visninger != null && cmp?.visninger != null ? deltaColor(visninger, cmp.visninger) : 'var(--muted)' }}>
+                              {visninger != null && cmp?.visninger != null ? pctDelta(visninger, cmp.visninger) : '—'}
+                            </span>}
                           </div>
+                          <div style={{ width: '16px' }} />
+                          {/* Kliks */}
+                          <div className="flex items-center tabular-nums" style={{ gap: '4px' }}>
+                            <span className="text-sm font-bold text-right" style={{ minWidth: colKlik, color: 'var(--foreground)' }}>
+                              {kliks != null ? kliks.toLocaleString('da-DK') : '—'}
+                            </span>
+                            {hasCmp && <span className="text-sm text-right" style={{ minWidth: colKlik, color: 'var(--muted)' }}>
+                              {cmp?.kliks != null ? cmp.kliks.toLocaleString('da-DK') : '—'}
+                            </span>}
+                            {hasCmp && <span className="text-xs font-semibold text-right" style={{ minWidth: colDelta, color: kliks != null && cmp?.kliks != null ? deltaColor(kliks, cmp.kliks) : 'var(--muted)' }}>
+                              {kliks != null && cmp?.kliks != null ? pctDelta(kliks, cmp.kliks) : '—'}
+                            </span>}
+                          </div>
+                          <div style={{ width: '16px' }} />
+                          <span className="text-sm font-bold text-right" style={{ minWidth: colRate, color: klikrate ? 'var(--accent)' : 'var(--muted)' }}>
+                            {klikrate ? `${klikrate}%` : '—'}
+                          </span>
                         </div>
                         {/* Sub-rækker per property */}
                         {showSubs && subs.map(sub => (
-                          <div key={sub.label} className="flex items-center justify-between pb-2" style={{ paddingLeft: '16px' }}>
-                            <span className="text-xs" style={{ color: 'var(--muted)' }}>
-                              <span style={{ color: 'var(--border)', marginRight: '4px' }}>↳</span>
-                              {sub.label}
+                          <div key={sub.label} className="flex items-center pb-2" style={{ paddingLeft: '16px', gap: '0' }}>
+                            <span className="text-xs flex-1" style={{ color: 'var(--muted)' }}>
+                              <span style={{ color: 'var(--border)', marginRight: '4px' }}>↳</span>{sub.label}
                             </span>
-                            <div className="flex items-center gap-4 tabular-nums">
-                              <span className="text-xs text-right" style={{ minWidth: colW.vis, color: 'var(--muted)' }}>
-                                {sub.visninger != null ? sub.visninger.toLocaleString('da-DK') : '—'}
-                              </span>
-                              <span className="text-xs text-right" style={{ minWidth: colW.klik, color: 'var(--muted)' }}>
-                                {sub.kliks != null ? sub.kliks.toLocaleString('da-DK') : '—'}
-                              </span>
-                              <span className="text-xs text-right" style={{ minWidth: colW.rate, color: 'var(--muted)' }}>—</span>
+                            <div className="flex items-center tabular-nums" style={{ gap: '4px' }}>
+                              <span className="text-xs text-right" style={{ minWidth: colVis, color: 'var(--muted)' }}>{sub.visninger != null ? sub.visninger.toLocaleString('da-DK') : '—'}</span>
+                              {hasCmp && <span className="text-xs text-right" style={{ minWidth: colVis, color: 'var(--muted)', opacity: 0.5 }}>—</span>}
+                              {hasCmp && <span className="text-xs text-right" style={{ minWidth: colDelta }}>—</span>}
                             </div>
+                            <div style={{ width: '16px' }} />
+                            <div className="flex items-center tabular-nums" style={{ gap: '4px' }}>
+                              <span className="text-xs text-right" style={{ minWidth: colKlik, color: 'var(--muted)' }}>{sub.kliks != null ? sub.kliks.toLocaleString('da-DK') : '—'}</span>
+                              {hasCmp && <span className="text-xs text-right" style={{ minWidth: colKlik, color: 'var(--muted)', opacity: 0.5 }}>—</span>}
+                              {hasCmp && <span className="text-xs text-right" style={{ minWidth: colDelta }}>—</span>}
+                            </div>
+                            <div style={{ width: '16px' }} />
+                            <span className="text-xs text-right" style={{ minWidth: colRate, color: 'var(--muted)' }}>—</span>
                           </div>
                         ))}
                       </div>
@@ -1010,29 +939,27 @@ export default async function PartnerDetailPage({
                 </div>
 
                 {/* Total */}
-                <div className="px-5 py-3 flex items-center justify-between border-t" style={{ borderColor: 'var(--border)', background: 'var(--surface-2)' }}>
-                  <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Total</span>
-                  <div className="flex items-center gap-4 tabular-nums">
-                    <div className="text-right" style={{ minWidth: colW.vis }}>
-                      <span className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>{totalVis.toLocaleString('da-DK')}</span>
-                      {cmpTotalVis != null && (
-                        <div className="text-xs" style={{ color: deltaColor(totalVis, cmpTotalVis) }}>
-                          {pctDelta(totalVis, cmpTotalVis)} · {cmpTotalVis.toLocaleString('da-DK')}
-                        </div>
-                      )}
-                    </div>
-                    <div className="text-right" style={{ minWidth: colW.klik }}>
-                      <span className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>{totalKlik.toLocaleString('da-DK')}</span>
-                      {cmpTotalKlik != null && (
-                        <div className="text-xs" style={{ color: deltaColor(totalKlik, cmpTotalKlik) }}>
-                          {pctDelta(totalKlik, cmpTotalKlik)} · {cmpTotalKlik.toLocaleString('da-DK')}
-                        </div>
-                      )}
-                    </div>
-                    <span className="text-sm font-bold text-right" style={{ minWidth: colW.rate, color: 'var(--accent)' }}>
-                      {totalVis > 0 ? `${((totalKlik / totalVis) * 100).toFixed(2)}%` : '—'}
-                    </span>
+                <div className="px-5 py-3 flex items-center border-t" style={{ borderColor: 'var(--border)', background: 'var(--surface-2)', gap: '0' }}>
+                  <span className="text-sm font-semibold flex-1" style={{ color: 'var(--foreground)' }}>Total</span>
+                  <div className="flex items-center tabular-nums" style={{ gap: '4px' }}>
+                    <span className="text-sm font-bold text-right" style={{ minWidth: colVis, color: 'var(--foreground)' }}>{totalVis.toLocaleString('da-DK')}</span>
+                    {hasCmp && <span className="text-sm text-right" style={{ minWidth: colVis, color: 'var(--muted)' }}>{cmpTotalVis?.toLocaleString('da-DK') ?? '—'}</span>}
+                    {hasCmp && <span className="text-xs font-semibold text-right" style={{ minWidth: colDelta, color: cmpTotalVis != null ? deltaColor(totalVis, cmpTotalVis) : 'var(--muted)' }}>
+                      {cmpTotalVis != null ? pctDelta(totalVis, cmpTotalVis) : '—'}
+                    </span>}
                   </div>
+                  <div style={{ width: '16px' }} />
+                  <div className="flex items-center tabular-nums" style={{ gap: '4px' }}>
+                    <span className="text-sm font-bold text-right" style={{ minWidth: colKlik, color: 'var(--foreground)' }}>{totalKlik.toLocaleString('da-DK')}</span>
+                    {hasCmp && <span className="text-sm text-right" style={{ minWidth: colKlik, color: 'var(--muted)' }}>{cmpTotalKlik?.toLocaleString('da-DK') ?? '—'}</span>}
+                    {hasCmp && <span className="text-xs font-semibold text-right" style={{ minWidth: colDelta, color: cmpTotalKlik != null ? deltaColor(totalKlik, cmpTotalKlik) : 'var(--muted)' }}>
+                      {cmpTotalKlik != null ? pctDelta(totalKlik, cmpTotalKlik) : '—'}
+                    </span>}
+                  </div>
+                  <div style={{ width: '16px' }} />
+                  <span className="text-sm font-bold text-right" style={{ minWidth: colRate, color: 'var(--accent)' }}>
+                    {totalVis > 0 ? `${((totalKlik / totalVis) * 100).toFixed(2)}%` : '—'}
+                  </span>
                 </div>
               </div>
             )
@@ -1046,7 +973,7 @@ export default async function PartnerDetailPage({
       <div data-section-id="banner-stats" data-section-label="Banner statistik">
         <section className="space-y-4">
           <h2 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>
-            Banner statistik <span className="font-normal text-xs ml-1" style={{ color: 'var(--muted)' }}>(Pacenami — {monthLabel(selectedMonth)})</span>
+            Banner statistik <span className="font-normal text-xs ml-1" style={{ color: 'var(--muted)' }}>(Pacenami — {formatRange(ga4Start, ga4End)})</span>
           </h2>
 
           <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
