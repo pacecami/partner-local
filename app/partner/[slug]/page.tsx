@@ -403,7 +403,6 @@ export default async function PartnerDashboardPage({
               </div>
                 </div>
               </div>
-            </div>
             {/* Statistik — grouped oversigt + per-property breakdown */}
             {(() => {
               function buildTotals(results: typeof ga4Results) {
