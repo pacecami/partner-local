@@ -2,19 +2,13 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
+import { toYMD, parseYMD, monthEnd, formatRange } from '@/lib/dateUtils'
+
+export { formatRange }
 
 // ── date helpers ──────────────────────────────────────────────────────────────
 
-function toYMD(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
-function parseYMD(s: string): Date {
-  const [y, m, d] = s.split('-').map(Number)
-  return new Date(y, m - 1, d)
-}
-
-function mEnd(y: number, m: number): Date { return new Date(y, m + 1, 0) }
+function mEnd(y: number, m: number): Date { return monthEnd(y, m) }
 function mStart(y: number, m: number): Date { return new Date(y, m, 1) }
 
 function thisMonth(): [string, string] {
@@ -60,23 +54,6 @@ function prevPeriod(start: string, end: string): [string, string] {
   return [toYMD(newStart), toYMD(newEnd)]
 }
 
-function fmtDMY(d: Date): string {
-  return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`
-}
-
-export function formatRange(start: string, end: string): string {
-  const s = parseYMD(start), e = parseYMD(end)
-  const lastOfMonth = mEnd(e.getFullYear(), e.getMonth())
-  const isFullMonth =
-    s.getDate() === 1 &&
-    s.getMonth() === e.getMonth() &&
-    s.getFullYear() === e.getFullYear() &&
-    e.getDate() === lastOfMonth.getDate()
-  if (isFullMonth) {
-    return s.toLocaleDateString('da-DK', { month: 'long', year: 'numeric' })
-  }
-  return `${fmtDMY(s)} – ${fmtDMY(e)}`
-}
 
 // ── Calendar sub-component ────────────────────────────────────────────────────
 
