@@ -11,6 +11,7 @@ import AddPlacementModal from '@/components/AddPlacementModal'
 import AddCampaignModal from '@/components/AddCampaignModal'
 import CampaignsTable from '@/components/CampaignsTable'
 import AddLeadModal from '@/components/AddLeadModal'
+import DateRangePicker, { formatRange } from '@/components/DateRangePicker'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,56 +30,25 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
-function monthLabel(ym: string) {
-  const [y, m] = ym.split('-').map(Number)
-  return new Date(y, m - 1, 1).toLocaleDateString('da-DK', { month: 'long', year: 'numeric' })
-}
-
-function prevMonth(ym: string) {
-  const [y, m] = ym.split('-').map(Number)
-  const d = new Date(y, m - 2, 1)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-}
-
-function nextMonth(ym: string) {
-  const [y, m] = ym.split('-').map(Number)
-  const d = new Date(y, m, 1)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-}
-
 export default async function PartnerDetailPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ month?: string; compare?: string }>
+  searchParams: Promise<{ start?: string; end?: string; cmpStart?: string; cmpEnd?: string }>
 }) {
   const { id: slug } = await params
-  const { month: monthParam, compare: compareParam } = await searchParams
+  const { start: startParam, end: endParam, cmpStart: cmpStartParam, cmpEnd: cmpEndParam } = await searchParams
   const supabase = await createClient()
 
   const now = new Date()
-  const currentYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-  const EARLIEST = '2026-01'
-  const selectedMonth = monthParam && monthParam >= EARLIEST && monthParam <= currentYM ? monthParam : currentYM
-  const [selYear, selMonth] = selectedMonth.split('-').map(Number)
-  const ga4Start = `${selectedMonth}-01`
-  const ga4End = `${selectedMonth}-${String(new Date(selYear, selMonth, 0).getDate()).padStart(2, '0')}`
-
-  // Sammenligningsperiode
-  const selectedCompare = compareParam && compareParam < selectedMonth ? compareParam : null
-  let cmpStart: string | null = null
-  let cmpEnd: string | null = null
-  if (selectedCompare) {
-    const [cmpY, cmpM] = selectedCompare.split('-').map(Number)
-    cmpStart = `${selectedCompare}-01`
-    cmpEnd = `${selectedCompare}-${String(new Date(cmpY, cmpM, 0).getDate()).padStart(2, '0')}`
-  }
-
-  function sameMonthLastYear(ym: string) {
-    const [y, m] = ym.split('-').map(Number)
-    return `${y - 1}-${String(m).padStart(2, '0')}`
-  }
+  const defaultStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+  const defaultEnd   = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()).padStart(2, '0')}`
+  const ga4Start = startParam ?? defaultStart
+  const ga4End   = endParam   ?? defaultEnd
+  const cmpStart: string | null = (cmpStartParam && cmpEndParam) ? cmpStartParam : null
+  const cmpEnd:   string | null = (cmpStartParam && cmpEndParam) ? cmpEndParam   : null
+  const selectedCompare = !!(cmpStart && cmpEnd)
 
   const { data: partner } = await supabase
     .from('partners')
@@ -411,7 +381,7 @@ export default async function PartnerDetailPage({
           </h1>
         </div>
         <a
-          href={`/partner/${slug}`}
+          href={`/p/${partner.access_token}`}
           className="px-4 py-2 rounded-lg text-sm font-semibold"
           style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
         >
@@ -773,77 +743,7 @@ export default async function PartnerDetailPage({
             <h2 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>
               GA4 statistik
             </h2>
-            <div className="flex items-center gap-4 flex-wrap">
-              {/* Månedsnavigation */}
-              <div className="flex items-center gap-2">
-                {selectedMonth > EARLIEST ? (
-                  <a
-                    href={`?month=${prevMonth(selectedMonth)}${selectedCompare ? `&compare=${prevMonth(selectedCompare)}` : ''}`}
-                    className="px-3 py-1.5 rounded-lg text-xs"
-                    style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
-                  >
-                    ← Forrige
-                  </a>
-                ) : (
-                  <span className="px-3 py-1.5 rounded-lg text-xs" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--muted)', opacity: 0.4 }}>← Forrige</span>
-                )}
-                <span className="text-sm font-medium capitalize px-2" style={{ color: 'var(--foreground)', minWidth: '130px', textAlign: 'center' }}>
-                  {monthLabel(selectedMonth)}
-                </span>
-                {selectedMonth < currentYM ? (
-                  <a
-                    href={`?month=${nextMonth(selectedMonth)}${selectedCompare ? `&compare=${nextMonth(selectedCompare)}` : ''}`}
-                    className="px-3 py-1.5 rounded-lg text-xs"
-                    style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
-                  >
-                    Næste →
-                  </a>
-                ) : (
-                  <span className="px-3 py-1.5 rounded-lg text-xs" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--muted)', opacity: 0.4 }}>Næste →</span>
-                )}
-              </div>
-
-              {/* Sammenligningsvælger */}
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs" style={{ color: 'var(--muted)' }}>Sammenlign:</span>
-                {(() => {
-                  const cmpYear = sameMonthLastYear(selectedMonth)
-                  const cmpPrev = prevMonth(selectedMonth)
-                  const options = [
-                    { label: 'Ingen', value: null },
-                    { label: `Forrige år (${monthLabel(cmpYear).split(' ')[0]} ${cmpYear.split('-')[0]})`, value: cmpYear },
-                    { label: `Forrige md.`, value: cmpPrev },
-                  ]
-                  return options.map(opt => {
-                    const active = opt.value === selectedCompare
-                    return (
-                      <a
-                        key={opt.label}
-                        href={opt.value ? `?month=${selectedMonth}&compare=${opt.value}` : `?month=${selectedMonth}`}
-                        className="px-2.5 py-1 rounded-lg text-xs"
-                        style={{
-                          background: active ? 'var(--accent)' : 'var(--surface-2)',
-                          border: '1px solid var(--border)',
-                          color: active ? '#000' : 'var(--muted)',
-                          fontWeight: active ? 600 : 400,
-                        }}
-                      >
-                        {opt.label}
-                      </a>
-                    )
-                  })
-                })()}
-              </div>
-            </div>
-            {selectedCompare && (
-              <div className="flex items-center gap-2 text-xs px-1" style={{ color: 'var(--muted)' }}>
-                <span className="inline-block w-3 h-0.5 rounded" style={{ background: 'var(--accent)', opacity: 0.5 }} />
-                <span className="capitalize font-medium" style={{ color: 'var(--foreground)' }}>{monthLabel(selectedMonth)}</span>
-                <span>vs.</span>
-                <span className="inline-block w-3 h-0.5 rounded border" style={{ borderColor: 'var(--muted)', borderStyle: 'dashed' }} />
-                <span className="capitalize font-medium">{monthLabel(selectedCompare)}</span>
-              </div>
-            )}
+            <DateRangePicker start={ga4Start} end={ga4End} cmpStart={cmpStart} cmpEnd={cmpEnd} />
           </div>
           {/* Samlet tabel — samme format som partnersiden */}
           {(() => {
@@ -1046,7 +946,7 @@ export default async function PartnerDetailPage({
       <div data-section-id="banner-stats" data-section-label="Banner statistik">
         <section className="space-y-4">
           <h2 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>
-            Banner statistik <span className="font-normal text-xs ml-1" style={{ color: 'var(--muted)' }}>(Pacenami — {monthLabel(selectedMonth)})</span>
+            Banner statistik <span className="font-normal text-xs ml-1" style={{ color: 'var(--muted)' }}>(Pacenami — {formatRange(ga4Start, ga4End)})</span>
           </h2>
 
           <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
