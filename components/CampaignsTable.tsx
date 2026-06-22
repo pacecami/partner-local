@@ -42,8 +42,8 @@ function CampaignRows({
   dimmed = false,
 }: {
   campaigns: Campaign[]
-  slug: string
-  deleteCampaign: (fd: FormData) => Promise<void>
+  slug?: string
+  deleteCampaign?: (fd: FormData) => Promise<void>
   dimmed?: boolean
 }) {
   return (
@@ -85,21 +85,23 @@ function CampaignRows({
               <td className="px-4 py-3 text-sm whitespace-nowrap" style={{ color: 'var(--foreground)' }}>
                 {c.monthly_budget ? `${c.monthly_budget.toLocaleString('da-DK')} kr` : '—'}
               </td>
-              <td className="px-4 py-3 text-right">
-                <div className="flex items-center justify-end gap-2">
-                  <a
-                    href={`/admin/partners/${slug}/campaigns/${c.id}`}
-                    className="text-xs px-3 py-1.5 rounded-lg whitespace-nowrap"
-                    style={{ background: 'var(--surface-2)', color: 'var(--foreground)' }}
-                  >
-                    Rediger
-                  </a>
-                  <form action={deleteCampaign} className="inline">
-                    <input type="hidden" name="campaign_id" value={c.id} />
-                    <button type="submit" className="text-xs px-3 py-1.5 rounded-lg" style={{ background: 'var(--surface-2)', color: 'var(--muted)' }}>Slet</button>
-                  </form>
-                </div>
-              </td>
+              {slug && deleteCampaign && (
+                <td className="px-4 py-3 text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    <a
+                      href={`/admin/partners/${slug}/campaigns/${c.id}`}
+                      className="text-xs px-3 py-1.5 rounded-lg whitespace-nowrap"
+                      style={{ background: 'var(--surface-2)', color: 'var(--foreground)' }}
+                    >
+                      Rediger
+                    </a>
+                    <form action={deleteCampaign} className="inline">
+                      <input type="hidden" name="campaign_id" value={c.id} />
+                      <button type="submit" className="text-xs px-3 py-1.5 rounded-lg" style={{ background: 'var(--surface-2)', color: 'var(--muted)' }}>Slet</button>
+                    </form>
+                  </div>
+                </td>
+              )}
             </tr>
             {hasPerf && (
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
@@ -178,8 +180,8 @@ export default function CampaignsTable({
   deleteCampaign,
 }: {
   campaigns: Campaign[]
-  slug: string
-  deleteCampaign: (fd: FormData) => Promise<void>
+  slug?: string
+  deleteCampaign?: (fd: FormData) => Promise<void>
 }) {
   const [endedOpen, setEndedOpen] = useState(false)
 
@@ -194,7 +196,7 @@ export default function CampaignsTable({
     <table className="w-full">
       <thead>
         <tr style={{ borderBottom: '1px solid var(--border)' }}>
-          {['Grafik', 'Navn', 'Placeringer', 'Status', 'Periode', 'Budget/md', ''].map(h => (
+          {['Grafik', 'Navn', 'Placeringer', 'Status', 'Periode', 'Budget/md', ...(slug && deleteCampaign ? [''] : [])].map(h => (
             <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>{h}</th>
           ))}
         </tr>

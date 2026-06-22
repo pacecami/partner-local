@@ -1,4 +1,3 @@
-import React from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { fetchGA4Events } from '@/lib/ga4'
@@ -6,6 +5,7 @@ import { fetchPacenamiStats, type PacenamiStats } from '@/lib/pacenami'
 import { GA4_PROPS } from '@/app/admin/indstillinger/page'
 import PlacementLightbox from '@/components/PlacementLightbox'
 import StatRow from '@/components/StatRow'
+import CampaignsTable from '@/components/CampaignsTable'
 
 // Parrer events baseret på eksplicit gruppe ("gruppe > Visningsnavn")
 // eller falder tilbage på alias-navn hvis ingen gruppe er angivet
@@ -44,21 +44,6 @@ function pairEvents(
 }
 
 export const dynamic = 'force-dynamic'
-
-function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, { label: string; color: string }> = {
-    active:  { label: 'Aktiv',     color: '#22c55e' },
-    planned: { label: 'Planlagt',  color: '#f5d000' },
-    ended:   { label: 'Afsluttet', color: '#888' },
-  }
-  const { label, color } = map[status] ?? { label: status, color: '#888' }
-  return (
-    <span className="inline-flex items-center gap-1.5 text-xs font-medium">
-      <span className="w-1.5 h-1.5 rounded-full" style={{ background: color }} />
-      <span style={{ color }}>{label}</span>
-    </span>
-  )
-}
 
 function monthLabel(ym: string) {
   const [y, m] = ym.split('-').map(Number)
@@ -307,157 +292,7 @@ export default async function PartnerDashboardPage({
               Kampagner
             </h2>
           </div>
-          {!campaigns || campaigns.length === 0 ? (
-            <div className="px-6 py-10 text-center" style={{ color: 'var(--muted)' }}>
-              <p className="text-sm">Ingen kampagner endnu.</p>
-            </div>
-          ) : (
-            <table className="w-full">
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                  {['Grafik', 'Kampagne', 'Placeringer', 'Status', 'Periode', 'Budget/md'].map(h => (
-                    <th
-                      key={h}
-                      className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
-                      style={{ color: 'var(--muted)' }}
-                    >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {campaigns.map((c, i) => (
-                  <React.Fragment key={c.id}>
-                  <tr
-                    style={{ borderBottom: (i < campaigns.length - 1 && !c.impressions && !c.clicks && !c.emails_sent && !c.emails_opened && !c.clicks_to_advertiser) ? '1px solid var(--border)' : 'none' }}
-                  >
-                    <td className="pl-4 pr-2 py-4">
-                      {c.graphic_url ? (
-                        <img src={c.graphic_url} alt="" className="w-12 h-8 object-cover rounded" />
-                      ) : (
-                        <div
-                          className="w-12 h-8 rounded flex items-center justify-center text-xs"
-                          style={{ background: 'var(--surface-2)', color: 'var(--muted)' }}
-                        >
-                          —
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-4">
-                      <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>
-                        {c.name}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="flex flex-wrap gap-1">
-                        {(c.placements ?? []).map((p: string) => (
-                          <span
-                            key={p}
-                            className="text-xs px-2 py-0.5 rounded-full"
-                            style={{ background: 'var(--surface-2)', color: 'var(--foreground)' }}
-                          >
-                            {p}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <StatusBadge status={c.status} />
-                    </td>
-                    <td className="px-4 py-4 text-xs whitespace-nowrap" style={{ color: 'var(--muted)' }}>
-                      {c.start_date
-                        ? `${c.start_date.slice(0, 7)}${c.end_date ? ` → ${c.end_date.slice(0, 7)}` : ''}`
-                        : '—'}
-                    </td>
-                    <td className="px-4 py-4 text-sm whitespace-nowrap" style={{ color: 'var(--foreground)' }}>
-                      {c.monthly_budget ? `${c.monthly_budget.toLocaleString('da-DK')} kr` : '—'}
-                    </td>
-                  </tr>
-                  {(c.impressions != null || c.clicks != null || c.emails_sent != null || c.emails_opened != null || c.clicks_to_advertiser != null) && (() => {
-                    const placements: string[] = c.placements ?? []
-                    const isEmail = placements.some((p: string) => p === 'Nyhedsbreve' || p === 'Tilbudsmail')
-                    const isBanner = placements.includes('Banner')
-                    const isInapp = placements.includes('Inapp')
-                    const isVisual = isBanner || isInapp
-                    const showVisual = isVisual || (!isEmail && (c.impressions != null || c.clicks != null))
-                    return (
-                      <tr style={{ borderBottom: i < campaigns.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                        <td />
-                        <td colSpan={5} className="px-4 pb-4">
-                          <div className="flex flex-wrap gap-6">
-                            {/* E-mail metrics */}
-                            {isEmail && (
-                              <>
-                                {c.emails_sent != null && (
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs" style={{ color: 'var(--muted)' }}>Antal sendte</span>
-                                    <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{(c.emails_sent as number).toLocaleString('da-DK')}</span>
-                                  </div>
-                                )}
-                                {c.emails_sent != null && c.emails_opened != null && (
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs" style={{ color: 'var(--muted)' }}>Åbningsrate</span>
-                                    <span className="text-sm font-semibold" style={{ color: 'var(--accent)' }}>
-                                      {((c.emails_opened / c.emails_sent) * 100).toFixed(1)}%
-                                    </span>
-                                  </div>
-                                )}
-                                {c.clicks_to_advertiser != null && (
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs" style={{ color: 'var(--muted)' }}>Kliks til annoncør</span>
-                                    <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{(c.clicks_to_advertiser as number).toLocaleString('da-DK')}</span>
-                                  </div>
-                                )}
-                              </>
-                            )}
-                            {/* Pacenami rapport-link */}
-                            {isBanner && c.pacenami_report_url && (
-                              <a
-                                href={c.pacenami_report_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold"
-                                style={{ background: 'var(--accent)', color: '#000' }}
-                              >
-                                Se fuld rapport →
-                              </a>
-                            )}
-                            {/* Visual metrics (Banner / Inapp / fallback) */}
-                            {showVisual && (
-                              <>
-                                {c.impressions != null && (
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs" style={{ color: 'var(--muted)' }}>Visninger</span>
-                                    <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{(c.impressions as number).toLocaleString('da-DK')}</span>
-                                  </div>
-                                )}
-                                {c.clicks != null && (
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs" style={{ color: 'var(--muted)' }}>Kliks</span>
-                                    <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{(c.clicks as number).toLocaleString('da-DK')}</span>
-                                  </div>
-                                )}
-                                {c.impressions != null && c.clicks != null && (
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs" style={{ color: 'var(--muted)' }}>{isBanner ? 'Klikrate' : 'CTR'}</span>
-                                    <span className="text-sm font-semibold" style={{ color: 'var(--accent)' }}>
-                                      {((c.clicks / c.impressions) * 100).toFixed(1)}%
-                                    </span>
-                                  </div>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })()}
-                  </React.Fragment>
-                ))}
-              </tbody>
-            </table>
-          )}
+          <CampaignsTable campaigns={campaigns ?? []} />
         </section>
 
         {/* GA4 stats */}
