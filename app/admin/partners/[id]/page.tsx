@@ -134,18 +134,26 @@ export default async function PartnerDetailPage({
   const bannerCampaigns = (campaigns ?? []).filter(c =>
     c.pacenami_campaign_id && (c.placements ?? []).includes('Banner')
   )
+  const activeBannerCampaigns = bannerCampaigns.filter(c => c.status !== 'ended')
+  const endedBannerCampaigns  = bannerCampaigns.filter(c => c.status === 'ended')
+
   const pacenamiResults: Record<string, PacenamiStats | null> = {}
   const pacenamiCompareResults: Record<string, PacenamiStats | null> = {}
   await Promise.all([
-    ...bannerCampaigns.map(async c => {
+    ...activeBannerCampaigns.map(async c => {
       pacenamiResults[c.id] = await fetchPacenamiStats(c.pacenami_campaign_id, ga4Start, ga4End).catch(() => null)
     }),
-    ...(selectedCompare ? bannerCampaigns.map(async c => {
+    ...(selectedCompare ? activeBannerCampaigns.map(async c => {
       pacenamiCompareResults[c.id] = await fetchPacenamiStats(c.pacenami_campaign_id, cmpStart!, cmpEnd!).catch(() => null)
     }) : []),
+    ...endedBannerCampaigns.map(async c => {
+      const from = c.start_date ?? ga4Start
+      const to   = c.end_date   ?? ga4End
+      pacenamiResults[c.id] = await fetchPacenamiStats(c.pacenami_campaign_id, from, to).catch(() => null)
+    }),
   ])
-  function sumPacenami(results: Record<string, PacenamiStats | null>): PacenamiStats | null {
-    return Object.values(results).reduce<PacenamiStats | null>((acc, s) => {
+  function sumPacenami(results: Record<string, PacenamiStats | null>, ids: string[]): PacenamiStats | null {
+    return ids.map(id => results[id]).reduce<PacenamiStats | null>((acc, s) => {
       if (!s) return acc
       if (!acc) return { ...s }
       return {
@@ -162,8 +170,9 @@ export default async function PartnerDetailPage({
       }
     }, null)
   }
-  const pacenamiTotal = sumPacenami(pacenamiResults)
-  const pacenamiCompareTotal = selectedCompare ? sumPacenami(pacenamiCompareResults) : null
+  const activeIds = activeBannerCampaigns.map(c => c.id)
+  const pacenamiTotal = sumPacenami(pacenamiResults, activeIds)
+  const pacenamiCompareTotal = selectedCompare ? sumPacenami(pacenamiCompareResults, activeIds) : null
 
   function pctDelta(current: number, compare: number | undefined | null): string | null {
     if (!compare || compare === 0) return null
@@ -982,7 +991,7 @@ export default async function PartnerDetailPage({
             ))}
           </div>
 
-          {bannerCampaigns.length > 1 && (
+          {activeBannerCampaigns.length > 1 && (
             <div className="rounded-xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
               <div className="px-5 py-3 border-b text-xs font-semibold uppercase tracking-wider" style={{ borderColor: 'var(--border)', color: 'var(--muted)' }}>
                 Opdelt per kampagne
@@ -996,10 +1005,10 @@ export default async function PartnerDetailPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {bannerCampaigns.map((c, i) => {
+                  {activeBannerCampaigns.map((c, i) => {
                     const s = pacenamiResults[c.id]
                     return (
-                      <tr key={c.id} style={{ borderBottom: i < bannerCampaigns.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                      <tr key={c.id} style={{ borderBottom: i < activeBannerCampaigns.length - 1 ? '1px solid var(--border)' : 'none' }}>
                         <td className="px-4 py-3 text-sm font-medium" style={{ color: 'var(--foreground)' }}>{c.name}</td>
                         <td className="px-4 py-3 text-sm tabular-nums" style={{ color: 'var(--foreground)' }}>{s ? s.impressions.toLocaleString('da-DK') : '—'}</td>
                         <td className="px-4 py-3 text-sm tabular-nums" style={{ color: 'var(--foreground)' }}>{s ? s.viewable_impressions.toLocaleString('da-DK') : '—'}</td>
@@ -1012,6 +1021,44 @@ export default async function PartnerDetailPage({
                 </tbody>
               </table>
             </div>
+          )}
+
+          {endedBannerCampaigns.length > 0 && (
+            <details className="rounded-xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+              <summary className="px-5 py-3 text-xs font-semibold uppercase tracking-wider cursor-pointer list-none flex items-center justify-between" style={{ color: 'var(--muted)' }}>
+                Afsluttede kampagner ({endedBannerCampaigns.length})
+                <span className="text-base leading-none">›</span>
+              </summary>
+              <div style={{ borderTop: '1px solid var(--border)' }}>
+                <table className="w-full">
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                      {['Kampagne', 'Periode', 'Impressions', 'Viewable', 'Viewability', 'Kliks', 'CTR'].map(h => (
+                        <th key={h} className="px-4 py-2 text-left text-xs font-medium" style={{ color: 'var(--muted)' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {endedBannerCampaigns.map((c, i) => {
+                      const s = pacenamiResults[c.id]
+                      const from = c.start_date ? new Date(c.start_date).toLocaleDateString('da-DK', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
+                      const to   = c.end_date   ? new Date(c.end_date).toLocaleDateString('da-DK',   { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
+                      return (
+                        <tr key={c.id} style={{ borderBottom: i < endedBannerCampaigns.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                          <td className="px-4 py-3 text-sm font-medium" style={{ color: 'var(--foreground)' }}>{c.name}</td>
+                          <td className="px-4 py-3 text-sm tabular-nums whitespace-nowrap" style={{ color: 'var(--muted)' }}>{from} – {to}</td>
+                          <td className="px-4 py-3 text-sm tabular-nums" style={{ color: 'var(--foreground)' }}>{s ? s.impressions.toLocaleString('da-DK') : '—'}</td>
+                          <td className="px-4 py-3 text-sm tabular-nums" style={{ color: 'var(--foreground)' }}>{s ? s.viewable_impressions.toLocaleString('da-DK') : '—'}</td>
+                          <td className="px-4 py-3 text-sm font-semibold tabular-nums" style={{ color: 'var(--accent)' }}>{s ? `${s.viewability.toFixed(2)}%` : '—'}</td>
+                          <td className="px-4 py-3 text-sm tabular-nums" style={{ color: 'var(--foreground)' }}>{s ? s.clicks.toLocaleString('da-DK') : '—'}</td>
+                          <td className="px-4 py-3 text-sm font-semibold tabular-nums" style={{ color: 'var(--accent)' }}>{s ? `${s.ctr.toFixed(2)}%` : '—'}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </details>
           )}
         </section>
       </div>
