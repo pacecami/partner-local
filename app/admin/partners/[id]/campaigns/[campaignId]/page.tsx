@@ -40,10 +40,16 @@ export default async function EditCampaignPage({
     const budgetRaw = (formData.get('monthly_budget') as string).replace(/\./g, '').replace(/,/g, '.').trim()
     const monthly_budget = budgetRaw ? Number(budgetRaw) : null
     const placements = formData.getAll('placements') as string[]
-    const impressionsRaw = (formData.get('impressions') as string || '').replace(/\./g, '').trim()
-    const clicksRaw = (formData.get('clicks') as string || '').replace(/\./g, '').trim()
-    const impressions = impressionsRaw ? parseInt(impressionsRaw) : null
-    const clicks = clicksRaw ? parseInt(clicksRaw) : null
+    const impressionsIosRaw = (formData.get('impressions_ios') as string || '').replace(/\./g, '').trim()
+    const clicksIosRaw = (formData.get('clicks_ios') as string || '').replace(/\./g, '').trim()
+    const impressionsAndroidRaw = (formData.get('impressions_android') as string || '').replace(/\./g, '').trim()
+    const clicksAndroidRaw = (formData.get('clicks_android') as string || '').replace(/\./g, '').trim()
+    const impressions_ios = impressionsIosRaw ? parseInt(impressionsIosRaw) : null
+    const clicks_ios = clicksIosRaw ? parseInt(clicksIosRaw) : null
+    const impressions_android = impressionsAndroidRaw ? parseInt(impressionsAndroidRaw) : null
+    const clicks_android = clicksAndroidRaw ? parseInt(clicksAndroidRaw) : null
+    const impressions = (impressions_ios ?? 0) + (impressions_android ?? 0) || null
+    const clicks = (clicks_ios ?? 0) + (clicks_android ?? 0) || null
     const emailsSentRaw = (formData.get('emails_sent') as string || '').replace(/\./g, '').trim()
     const emailsOpenedRaw = (formData.get('emails_opened') as string || '').replace(/\./g, '').trim()
     const clicksToAdvertiserRaw = (formData.get('clicks_to_advertiser') as string || '').replace(/\./g, '').trim()
@@ -77,7 +83,7 @@ export default async function EditCampaignPage({
 
     await supabase
       .from('campaigns')
-      .update({ name, status, start_date, end_date, monthly_budget, placements, graphic_url, impressions, clicks, emails_sent, emails_opened, clicks_to_advertiser, pacenami_campaign_id, pacenami_report_url, subject_pending })
+      .update({ name, status, start_date, end_date, monthly_budget, placements, graphic_url, impressions, clicks, impressions_ios, clicks_ios, impressions_android, clicks_android, emails_sent, emails_opened, clicks_to_advertiser, pacenami_campaign_id, pacenami_report_url, subject_pending })
       .eq('id', campaignId)
 
     redirect(`/admin/partners/${slug}?saved=true`)
@@ -213,14 +219,33 @@ export default async function EditCampaignPage({
               </p>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Visninger</label>
-                  <input name="impressions" type="text" inputMode="numeric" defaultValue={campaign.impressions ? campaign.impressions.toLocaleString('da-DK') : ''} placeholder="fx 4.012" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+                  <p className="text-xs font-medium mb-2" style={{ color: 'var(--foreground)' }}>iOS</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Visninger</label>
+                      <input name="impressions_ios" type="text" inputMode="numeric" defaultValue={campaign.impressions_ios ? campaign.impressions_ios.toLocaleString('da-DK') : ''} placeholder="fx 4.012" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Kliks</label>
+                      <input name="clicks_ios" type="text" inputMode="numeric" defaultValue={campaign.clicks_ios ? campaign.clicks_ios.toLocaleString('da-DK') : ''} placeholder="fx 315" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+                    </div>
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Kliks <span className="font-normal">(klikrate auto)</span></label>
-                  <input name="clicks" type="text" inputMode="numeric" defaultValue={campaign.clicks ? campaign.clicks.toLocaleString('da-DK') : ''} placeholder="fx 315" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+                  <p className="text-xs font-medium mb-2" style={{ color: 'var(--foreground)' }}>Android</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Visninger</label>
+                      <input name="impressions_android" type="text" inputMode="numeric" defaultValue={campaign.impressions_android ? campaign.impressions_android.toLocaleString('da-DK') : ''} placeholder="fx 4.012" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Kliks</label>
+                      <input name="clicks_android" type="text" inputMode="numeric" defaultValue={campaign.clicks_android ? campaign.clicks_android.toLocaleString('da-DK') : ''} placeholder="fx 315" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+                    </div>
+                  </div>
                 </div>
               </div>
+              <p className="text-xs mt-2" style={{ color: 'var(--muted)' }}>Klikrate beregnes automatisk ud fra de samlede visninger og kliks.</p>
             </div>
           </div>
           <div className="flex justify-end">

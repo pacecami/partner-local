@@ -14,6 +14,10 @@ interface Campaign {
   subject_pending?: boolean | null
   impressions?: number | null
   clicks?: number | null
+  impressions_ios?: number | null
+  clicks_ios?: number | null
+  impressions_android?: number | null
+  clicks_android?: number | null
   emails_sent?: number | null
   emails_opened?: number | null
   clicks_to_advertiser?: number | null
@@ -49,13 +53,16 @@ function CampaignRows({
   return (
     <>
       {campaigns.map((c, i) => {
-        const hasPerf = c.impressions != null || c.clicks != null || c.emails_sent != null || c.emails_opened != null || c.clicks_to_advertiser != null
+        const hasPlatformSplit = c.impressions_ios != null || c.clicks_ios != null || c.impressions_android != null || c.clicks_android != null
+        const totalImpressions = hasPlatformSplit ? (c.impressions_ios ?? 0) + (c.impressions_android ?? 0) : c.impressions ?? null
+        const totalClicks = hasPlatformSplit ? (c.clicks_ios ?? 0) + (c.clicks_android ?? 0) : c.clicks ?? null
+        const hasPerf = totalImpressions != null || totalClicks != null || c.emails_sent != null || c.emails_opened != null || c.clicks_to_advertiser != null
         const placements: string[] = c.placements ?? []
         const isEmail = placements.some(p => p === 'Nyhedsbreve' || p === 'Tilbudsmail')
         const isBanner = placements.includes('Banner')
         const isInapp = placements.includes('Inapp')
         const isVisual = isBanner || isInapp
-        const showVisual = isVisual || (!isEmail && (c.impressions != null || c.clicks != null))
+        const showVisual = isVisual || (!isEmail && (totalImpressions != null || totalClicks != null))
 
         return (
           <tbody key={c.id} style={{ opacity: dimmed ? 0.55 : 1 }}>
@@ -143,22 +150,38 @@ function CampaignRows({
                     )}
                     {showVisual && (
                       <>
-                        {c.impressions != null && (
+                        {(c.impressions_ios != null || c.clicks_ios != null) && (
                           <div className="flex items-center gap-1.5">
-                            <span className="text-xs" style={{ color: 'var(--muted)' }}>Visninger</span>
-                            <span className="text-xs font-semibold" style={{ color: 'var(--foreground)' }}>{(c.impressions as number).toLocaleString('da-DK')}</span>
+                            <span className="text-xs" style={{ color: 'var(--muted)' }}>iOS</span>
+                            <span className="text-xs font-semibold" style={{ color: 'var(--foreground)' }}>
+                              {c.impressions_ios != null ? c.impressions_ios.toLocaleString('da-DK') : '—'} vis. / {c.clicks_ios != null ? c.clicks_ios.toLocaleString('da-DK') : '—'} kliks
+                            </span>
                           </div>
                         )}
-                        {c.clicks != null && (
+                        {(c.impressions_android != null || c.clicks_android != null) && (
                           <div className="flex items-center gap-1.5">
-                            <span className="text-xs" style={{ color: 'var(--muted)' }}>Kliks</span>
-                            <span className="text-xs font-semibold" style={{ color: 'var(--foreground)' }}>{(c.clicks as number).toLocaleString('da-DK')}</span>
+                            <span className="text-xs" style={{ color: 'var(--muted)' }}>Android</span>
+                            <span className="text-xs font-semibold" style={{ color: 'var(--foreground)' }}>
+                              {c.impressions_android != null ? c.impressions_android.toLocaleString('da-DK') : '—'} vis. / {c.clicks_android != null ? c.clicks_android.toLocaleString('da-DK') : '—'} kliks
+                            </span>
                           </div>
                         )}
-                        {c.impressions != null && c.clicks != null && (
+                        {totalImpressions != null && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs" style={{ color: 'var(--muted)' }}>Visninger i alt</span>
+                            <span className="text-xs font-semibold" style={{ color: 'var(--foreground)' }}>{totalImpressions.toLocaleString('da-DK')}</span>
+                          </div>
+                        )}
+                        {totalClicks != null && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs" style={{ color: 'var(--muted)' }}>Kliks i alt</span>
+                            <span className="text-xs font-semibold" style={{ color: 'var(--foreground)' }}>{totalClicks.toLocaleString('da-DK')}</span>
+                          </div>
+                        )}
+                        {totalImpressions != null && totalClicks != null && (
                           <div className="flex items-center gap-1.5">
                             <span className="text-xs" style={{ color: 'var(--muted)' }}>{isBanner ? 'Klikrate' : 'CTR'}</span>
-                            <span className="text-xs font-semibold" style={{ color: 'var(--accent)' }}>{((c.clicks / c.impressions) * 100).toFixed(1)}%</span>
+                            <span className="text-xs font-semibold" style={{ color: 'var(--accent)' }}>{((totalClicks / totalImpressions) * 100).toFixed(1)}%</span>
                           </div>
                         )}
                       </>

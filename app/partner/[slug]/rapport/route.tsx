@@ -353,9 +353,12 @@ export async function GET(
           const isBanner = placements.includes('Banner')
           const isInapp  = placements.includes('Inapp')
           const isVisual = isBanner || isInapp
-          const showVisual = isVisual || (!isEmail && (c.impressions != null || c.clicks != null))
+          const hasPlatformSplit = c.impressions_ios != null || c.clicks_ios != null || c.impressions_android != null || c.clicks_android != null
+          const totalImpressions = hasPlatformSplit ? (c.impressions_ios ?? 0) + (c.impressions_android ?? 0) : c.impressions ?? null
+          const totalClicks = hasPlatformSplit ? (c.clicks_ios ?? 0) + (c.clicks_android ?? 0) : c.clicks ?? null
+          const showVisual = isVisual || (!isEmail && (totalImpressions != null || totalClicks != null))
           const hasEmailPerf  = c.emails_sent != null || c.emails_opened != null || c.clicks_to_advertiser != null
-          const hasVisualPerf = c.impressions  != null || c.clicks        != null
+          const hasVisualPerf = totalImpressions != null || totalClicks != null
           const hasPerf = (isEmail && hasEmailPerf) || (showVisual && hasVisualPerf)
 
           return (
@@ -414,23 +417,39 @@ export async function GET(
                   )}
                   {showVisual && hasVisualPerf && (
                     <>
-                      {c.impressions != null && (
+                      {(c.impressions_ios != null || c.clicks_ios != null) && (
                         <View style={s.perfItem}>
-                          <Text style={s.perfLabel}>Visninger</Text>
-                          <Text style={s.perfValue}>{fmtNum(c.impressions)}</Text>
+                          <Text style={s.perfLabel}>iOS</Text>
+                          <Text style={s.perfValue}>
+                            {c.impressions_ios != null ? fmtNum(c.impressions_ios) : '—'} vis. / {c.clicks_ios != null ? fmtNum(c.clicks_ios) : '—'} kliks
+                          </Text>
                         </View>
                       )}
-                      {c.clicks != null && (
+                      {(c.impressions_android != null || c.clicks_android != null) && (
                         <View style={s.perfItem}>
-                          <Text style={s.perfLabel}>Kliks</Text>
-                          <Text style={s.perfValue}>{fmtNum(c.clicks)}</Text>
+                          <Text style={s.perfLabel}>Android</Text>
+                          <Text style={s.perfValue}>
+                            {c.impressions_android != null ? fmtNum(c.impressions_android) : '—'} vis. / {c.clicks_android != null ? fmtNum(c.clicks_android) : '—'} kliks
+                          </Text>
                         </View>
                       )}
-                      {c.impressions != null && c.clicks != null && (
+                      {totalImpressions != null && (
+                        <View style={s.perfItem}>
+                          <Text style={s.perfLabel}>Visninger i alt</Text>
+                          <Text style={s.perfValue}>{fmtNum(totalImpressions)}</Text>
+                        </View>
+                      )}
+                      {totalClicks != null && (
+                        <View style={s.perfItem}>
+                          <Text style={s.perfLabel}>Kliks i alt</Text>
+                          <Text style={s.perfValue}>{fmtNum(totalClicks)}</Text>
+                        </View>
+                      )}
+                      {totalImpressions != null && totalClicks != null && (
                         <View style={s.perfItem}>
                           <Text style={s.perfLabel}>{isBanner ? 'Klikrate' : 'CTR'}</Text>
                           <Text style={s.perfAccent}>
-                            {((c.clicks / c.impressions) * 100).toFixed(1)}%
+                            {((totalClicks / totalImpressions) * 100).toFixed(1)}%
                           </Text>
                         </View>
                       )}
